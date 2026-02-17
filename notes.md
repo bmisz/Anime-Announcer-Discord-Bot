@@ -4,6 +4,8 @@
 
 TODO:
 
+- things
+
 ## Graphql useful query objects
 
 Media Object:

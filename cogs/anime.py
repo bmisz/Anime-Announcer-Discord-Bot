@@ -164,35 +164,47 @@ class AnimeAnnouncer(commands.Cog):
                 db_time = row[1]
                 db_startDate = row[2]
                 db_english_title = row[3]
+
+            found_change = False
             
             if anilist_english_name != db_english_title:
+                print(f"English title has changed from {db_english_title} to {anilist_english_name}")
+                found_change = True
                 cursor.execute("UPDATE tracked_anime SET title_english = ? WHERE anilist_id = ?", (anilist_english_name, show['id']))
             
             if anilist_status != db_status and anilist_status == "FINISHED":
+                found_change = True
                 cursor.execute("DELETE FROM tracked_anime WHERE anilist_id = ?", (show['id'],))
                 self.bot.connection.commit()
                 await channel.send(f"❌ **{show['title']['english']}** has concluded and has been removed from your tracking list. ❌")
                 continue
 
             if anilist_status == "RELEASING" and db_status == "NOT_YET_RELEASED":
+                found_change = True
                 cursor.execute("UPDATE tracked_anime SET status = ? WHERE anilist_id = ?", (anilist_status, show['id']))
                 self.bot.connection.commit()
                 await channel.send(f"🚨 **{show['title']['english']}** has started airing! 🚨")
             
             elif anilist_status != db_status:
+                found_change = True
                 cursor.execute("UPDATE tracked_anime SET status = ? WHERE anilist_id = ?", (anilist_status, show['id']))
                 self.bot.connection.commit()
                 await channel.send(f"⚠️ UPDATE ⚠️: **{show['title']['english']}**'s status has changed. \n{db_status} ➡️ {anilist_status}")
             
             if anilist_startDate != db_startDate:
+                found_change = True
                 cursor.execute("UPDATE tracked_anime SET startDate = ? WHERE anilist_id = ?", (anilist_startDate, show['id']))
                 self.bot.connection.commit()
                 await channel.send(f"⚠️ UPDATE ⚠️: **{show['title']['english']}**'s start date has changed. \n{db_startDate} ➡️ {anilist_startDate}")
 
             if anilist_time != db_time:
+                found_change = True
                 cursor.execute("UPDATE tracked_anime SET next_episode_time = ? WHERE anilist_id = ?", (anilist_time, show['id']))
                 self.bot.connection.commit()
                 await channel.send(f"⚠️ UPDATE ⚠️: **{show['title']['english']}**'s next episode airing time has changed. \n{db_time} ➡️ {anilist_time}")
+
+        if not found_change:
+            print(f"Checked {len(ids)} shows. No changes found.")
 
     @query_anilist.before_loop
     async def before_query_anilist(self):
