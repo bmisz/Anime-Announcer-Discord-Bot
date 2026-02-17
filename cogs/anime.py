@@ -1,5 +1,7 @@
 import discord
 import sqlite3
+import datetime
+import time
 import requests
 from discord.ext import commands, tasks
 
@@ -106,9 +108,9 @@ class AnimeAnnouncer(commands.Cog):
 
     @tasks.loop(minutes=30)
     async def query_anilist(self):
-        channel = self.bot.get_channel(self.channel_id)
-        if channel is None:
-            channel = await self.bot.fetch_channel(self.channel_id)
+        CHANNEL = self.bot.get_channel(self.channel_id)
+        if CHANNEL is None:
+            CHANNEL = await self.bot.fetch_channel(self.channel_id)
         
         cursor = self.bot.connection.cursor()
         cursor.execute("SELECT anilist_id FROM tracked_anime")
@@ -176,36 +178,74 @@ class AnimeAnnouncer(commands.Cog):
                 found_change = True
                 cursor.execute("DELETE FROM tracked_anime WHERE anilist_id = ?", (show['id'],))
                 self.bot.connection.commit()
-                await channel.send(f"❌ **{show['title']['english']}** has concluded and has been removed from your tracking list. ❌")
+                await CHANNEL.send(f"❌ **{show['title']['english']}** has concluded and has been removed from your tracking list. ❌")
                 continue
 
             if anilist_status == "RELEASING" and db_status == "NOT_YET_RELEASED":
                 found_change = True
                 cursor.execute("UPDATE tracked_anime SET status = ? WHERE anilist_id = ?", (anilist_status, show['id']))
                 self.bot.connection.commit()
-                await channel.send(f"🚨 **{show['title']['english']}** has started airing! 🚨")
+                await CHANNEL.send(f"🚨 **{show['title']['english']}** has started airing! 🚨")
             
             elif anilist_status != db_status:
                 found_change = True
                 cursor.execute("UPDATE tracked_anime SET status = ? WHERE anilist_id = ?", (anilist_status, show['id']))
                 self.bot.connection.commit()
-                await channel.send(f"⚠️ UPDATE ⚠️: **{show['title']['english']}**'s status has changed. \n{db_status} ➡️ {anilist_status}")
+                await CHANNEL.send(f"⚠️ UPDATE ⚠️: **{show['title']['english']}**'s status has changed. \n{db_status} ➡️ {anilist_status}")
             
             if anilist_startDate != db_startDate:
                 found_change = True
                 cursor.execute("UPDATE tracked_anime SET startDate = ? WHERE anilist_id = ?", (anilist_startDate, show['id']))
                 self.bot.connection.commit()
-                await channel.send(f"⚠️ UPDATE ⚠️: **{show['title']['english']}**'s start date has changed. \n{db_startDate} ➡️ {anilist_startDate}")
+                await CHANNEL.send(f"⚠️ UPDATE ⚠️: **{show['title']['english']}**'s start date has changed. \n{db_startDate} ➡️ {anilist_startDate}")
 
             if anilist_time != db_time:
                 found_change = True
                 cursor.execute("UPDATE tracked_anime SET next_episode_time = ? WHERE anilist_id = ?", (anilist_time, show['id']))
                 self.bot.connection.commit()
-                await channel.send(f"⚠️ UPDATE ⚠️: **{show['title']['english']}**'s next episode airing time has changed. \n{db_time} ➡️ {anilist_time}")
+                await CHANNEL.send(f"⚠️ UPDATE ⚠️: **{show['title']['english']}**'s next episode airing time has changed. \n{db_time} ➡️ {anilist_time}")
 
         if not found_change:
             print(f"Checked {len(ids)} shows. No changes found.")
 
+
+    time = datetime.time(hour=21, tzinfo=datetime.UTC)
+    @tasks.loop(time=time)
+    async def week_reminder(self):
+        CHANNEL = self.bot.get_channel(self.channel_id)
+        if CHANNEL is None:
+            CHANNEL = await self.bot.fetch_channel(self.channel_id)
+    
+        # One week in seconds
+        ONE_WEEK = 60 * 60 * 24 * 7 
+
+        NOW = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+        
+        cursor = self.bot.connection.cursor()
+        cursor.execute("SELECT anilist_id, title_english, next_episode_time, weekly_reminder_sent FROM tracked_anime")
+
+        rows = cursor.fetchall()
+
+        if not rows: 
+            print("Not tracking any anime yet, skipping checking for weekly reminder.")
+            return
+        
+        for id, english_title, next_episode_time, weekly_reminder_already_sent in rows:
+            weekly_reminder_already_sent = bool(weekly_reminder_already_sent)
+            if weekly_reminder_already_sent == True:
+                print(f"{english_title} has already had a 1 week reminder sent.")
+                continue
+            if next_episode_time == None:
+                print(f"{english_title} has no scheduled next episode yet.")
+                continue
+
+            time_to_next_ep = next_episode_time - NOW
+            if time_to_next_ep <= ONE_WEEK:
+                cursor.execute("UPDATE tracked_anime SET weekly_reminder_sent = 1 WHERE anilist_id = ?", (id,))
+                self.bot.connection.commit()
+                await CHANNEL.send(f"🔔 **{english_title}** is less than one week from airing it's first episode! 🔔")
+            
+            
     @query_anilist.before_loop
     async def before_query_anilist(self):
         print('Waiting until bot is initilized until querying AniList...')
