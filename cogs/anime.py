@@ -106,6 +106,20 @@ class AnimeAnnouncer(commands.Cog):
             self.bot.connection.commit()
             await ctx.send(f"Stopped tracking **{anime_id_int}**")
 
+    @commands.command(name="list")
+    async def list(self, ctx):
+        cursor = self.bot.connection.cursor()
+        cursor.execute("SELECT anilist_id, title_english FROM tracked_anime")
+        rows = cursor.fetchall()
+        rows_as_strings = []
+        for id, title in rows:
+            rows_as_strings.append(f"**• {title}.** *(id: {id})*")
+        
+        rows_as_strings.insert(0, "# Tracked Animes:")
+        final_string = "\n".join(rows_as_strings)
+        
+        await ctx.send(final_string)
+
     @tasks.loop(minutes=30)
     async def query_anilist(self):
         CHANNEL = self.bot.get_channel(self.channel_id)
