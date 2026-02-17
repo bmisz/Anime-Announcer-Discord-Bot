@@ -8,7 +8,7 @@ from discord.ext import commands, tasks
 class AnimeAnnouncer(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.channel_id = 1473084542934843402
+        self.channel_id = 1469512207355347143
         self.query_anilist.start()
 
 
