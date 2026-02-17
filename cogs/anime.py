@@ -167,7 +167,7 @@ class AnimeAnnouncer(commands.Cog):
 
             found_change = False
             
-            if anilist_english_name != db_english_title:
+            if (anilist_english_name != db_english_title) and (anilist_english_name is not None):
                 print(f"English title has changed from {db_english_title} to {anilist_english_name}")
                 found_change = True
                 cursor.execute("UPDATE tracked_anime SET title_english = ? WHERE anilist_id = ?", (anilist_english_name, show['id']))
