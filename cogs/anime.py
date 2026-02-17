@@ -151,6 +151,7 @@ class AnimeAnnouncer(commands.Cog):
         response = requests.post(url, json={'query': query, 'variables': variables})
         data = response.json()
 
+        found_change = False
         for show in data['data']['Page']['media']:
             anilist_english_name = show['title']['english']
             anilist_status = show['status']
@@ -167,7 +168,6 @@ class AnimeAnnouncer(commands.Cog):
                 db_startDate = row[2]
                 db_english_title = row[3]
 
-            found_change = False
             
             if (anilist_english_name != db_english_title) and (anilist_english_name is not None):
                 print(f"English title has changed from {db_english_title} to {anilist_english_name}")
@@ -240,7 +240,7 @@ class AnimeAnnouncer(commands.Cog):
                 continue
 
             time_to_next_ep = next_episode_time - NOW
-            if time_to_next_ep <= ONE_WEEK:
+            if 0 < time_to_next_ep <= ONE_WEEK:
                 cursor.execute("UPDATE tracked_anime SET weekly_reminder_sent = 1 WHERE anilist_id = ?", (id,))
                 self.bot.connection.commit()
                 await CHANNEL.send(f"🔔 **{english_title}** is less than one week from airing it's first episode! 🔔")
