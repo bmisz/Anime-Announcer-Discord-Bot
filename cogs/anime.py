@@ -99,7 +99,7 @@ class AnimeAnnouncer(commands.Cog):
             )
             self.bot.connection.commit()
 
-            await ctx.send(f"Now tracking **{anime_id_int}**")
+            await ctx.send(f"Now tracking **{english_title} ({anime_id_int})**")
 
     @commands.command(name="untrack")
     async def untrack(self, ctx, anime_id: str = ""):
@@ -110,12 +110,15 @@ class AnimeAnnouncer(commands.Cog):
             return
         if anime_id == "":
             await ctx.send("Please enter an ID to stop tracking.")
-        else:
-            sql = "DELETE FROM tracked_anime WHERE anilist_id = ?"
-            cursor = self.bot.connection.cursor()
-            cursor.execute(sql, (anime_id_int,))
-            self.bot.connection.commit()
-            await ctx.send(f"Stopped tracking **{anime_id_int}**")
+            return
+        
+        cursor = self.bot.connection.cursor()
+        cursor.execute("SELECT title_english FROM tracked_anime WHERE anilist_id = ?", (anime_id_int,))
+        name = cursor.fetchone()
+        name = name[0]
+        cursor.execute("DELETE FROM tracked_anime WHERE anilist_id = ?", (anime_id_int,))
+        self.bot.connection.commit()
+        await ctx.send(f"Stopped tracking **{name} ({anime_id_int})**")
 
     @commands.command(name="list")
     async def list(self, ctx):
