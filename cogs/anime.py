@@ -4,6 +4,7 @@ import datetime
 import time
 import requests
 from discord.ext import commands, tasks
+from langdetect import detect
 
 class AnimeAnnouncer(commands.Cog):
     def __init__(self, bot):
@@ -11,6 +12,13 @@ class AnimeAnnouncer(commands.Cog):
         self.channel_id = 1469512207355347143
         self.query_anilist.start()
 
+    @staticmethod
+    def _determine_english_title(synonym_list):
+        for synonym in synonym_list:
+            language_of_syn = detect(synonym)
+            if language_of_syn == 'en':
+                return synonym
+        return None     # No synonyms were in english
 
     @commands.command(name="track")
     async def track(self, ctx, anime_id: str = ""):
@@ -37,6 +45,7 @@ class AnimeAnnouncer(commands.Cog):
                         english
                         romaji
                     }
+                    synonyms
                 }
             }
             '''
@@ -51,7 +60,7 @@ class AnimeAnnouncer(commands.Cog):
             anime = data['data']['Media']
 
             if anime['status'] == "FINISHED":
-                await ctx.send("Show is finished and is therefore has no reason to be tracked. Not added. ")
+                await ctx.send("Show is finished and therefore has no reason to be tracked. Not added. ")
                 return
             
             start_date = f"{anime['startDate']['year']}-{anime['startDate']['month']}-{anime['startDate']['day']}"
@@ -72,7 +81,9 @@ class AnimeAnnouncer(commands.Cog):
                 return
 
             if anime['title']['english'] is None:
-                english_title = anime['title']['romaji']
+                english_title = self._determine_english_title(anime['synonyms'])
+                if english_title is None:
+                    english_title = anime['title']['romaji']   
             else:
                 english_title = anime['title']['english']
 
@@ -111,9 +122,12 @@ class AnimeAnnouncer(commands.Cog):
         cursor = self.bot.connection.cursor()
         cursor.execute("SELECT anilist_id, title_english FROM tracked_anime")
         rows = cursor.fetchall()
+        if not rows:
+            await ctx.send("**You're not currently tracking any animes, to get started use !track *id.***")
+            return
         rows_as_strings = []
         for id, title in rows:
-            rows_as_strings.append(f"**• {title}.** *(id: {id})*")
+            rows_as_strings.append(f"**• {title}** *(ID: {id})*")
         
         rows_as_strings.insert(0, "# Tracked Animes:")
         final_string = "\n".join(rows_as_strings)
