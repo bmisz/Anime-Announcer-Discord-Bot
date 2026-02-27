@@ -187,14 +187,16 @@ class AnimeAnnouncer(commands.Cog):
         response = requests.post(url, json={'query': query, 'variables': variables})
         data = response.json()
 
-        changes = self._look_for_changes(data)
+        changes = await self._look_for_changes(data)
 
         if changes == False:
             print(f"Searched through {len(ids)} shows and found no changes.")
 
-    async def _look_for_changes(self, anilist_data):
+    async def _look_for_changes(self, anilist_data) -> bool:
         CHANNEL = self.bot.get_channel(self.channel_id)
         cursor = self.bot.connection.cursor()
+
+        print("Looking for changes...")
         found_change = False
 
         for show in anilist_data['data']['Page']['media']:
