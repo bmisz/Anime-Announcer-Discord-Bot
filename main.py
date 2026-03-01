@@ -26,7 +26,7 @@ class MyAnimeBot(commands.Bot):
         """This runs before the bot connects to Discord."""
         # This is where you load your Cogs (the other .py files)
         for filename in os.listdir('./cogs'):
-            if filename == 'utils.py':
+            if filename == 'util_methods.py':
                 print("Skipping utils file in cogs init.")
                 continue
             if filename.endswith('.py'):
