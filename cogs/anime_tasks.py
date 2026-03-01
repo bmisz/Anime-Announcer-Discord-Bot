@@ -3,7 +3,7 @@ import requests
 import os
 from datetime import datetime, time, timezone
 import sqlite3
-from util_methods import convert_epoch_to_local
+from .util_methods import convert_epoch_to_local
 
 class AnimeAnnouncerTasks(commands.Cog):
     def __init__(self, bot):

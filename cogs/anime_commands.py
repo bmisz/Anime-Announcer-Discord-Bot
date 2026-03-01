@@ -2,7 +2,7 @@ import requests
 from datetime import datetime
 from discord.ext import commands
 from langdetect import detect
-from util_methods import convert_epoch_to_local, determine_english_title
+from .util_methods import convert_epoch_to_local, determine_english_title
 
 class AnimeAnnouncerCommands(commands.Cog):
     def __init__(self, bot):
