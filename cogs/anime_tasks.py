@@ -179,9 +179,9 @@ class AnimeAnnouncerTasks(commands.Cog):
             with dest:
                 source.backup(dest)
             
-            print(f"✅ Backup successful: {backup_file}")
+            print(f"Backup successful: {backup_file}")
         except Exception as e:
-            print(f"❌ Backup failed: {e}")
+            print(f"Backup failed: {e}")
         finally:
             dest.close()
 
