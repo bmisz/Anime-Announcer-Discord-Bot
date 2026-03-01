@@ -1,20 +1,37 @@
 import requests
-from discord.ext import commands, tasks
+from datetime import datetime
+from discord.ext import commands
 from langdetect import detect
+from utils import convert_epoch_to_local, determine_english_title
 
 class AnimeAnnouncerCommands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @staticmethod
-    def _determine_english_title(synonym_list):
-        for synonym in synonym_list:
-            language_of_syn = detect(synonym)
-            if language_of_syn == 'en':
-                return synonym
-        return None     # No synonyms were in english
+    @commands.command(name="info")
+    async def info(self, ctx, anime_id: str = ""):
+        try: 
+            anime_id_int = int(anime_id)
+        except ValueError:
+            await ctx.send("This is not a valid integer ID")
+            return
+        if anime_id == "":
+            await ctx.send("Please enter an ID you track to get info on it")
+            return
+        cursor = self.bot.connection.cursor()
+        cursor.execute("SELECT * FROM tracked_anime WHERE anilist_id = ?", (anime_id_int,))
+        row = cursor.fetchone()
+        if row:
+            anilist_id, title_english, title_romaji, next_episode_time, start_date, status, weekly_reminder_sent = row
+            final_message = (f"# **{title_english}** *{anilist_id}*\n"
+            f"**Romaji Title:** {title_romaji}\n"
+            f"**Status:** {status}\n"
+            f"**Start date:** {start_date}\n"
+            f"**Next episode airs:** {convert_epoch_to_local(next_episode_time)}\n"
+            f"**Weekly reminder sent?:** {"Yes" if weekly_reminder_sent == 1 else "No"}"
+            )
+            await ctx.send(final_message)
 
-    
     @commands.command(name="track")
     async def track(self, ctx, anime_id: str = ""):
         try: 
@@ -76,7 +93,7 @@ class AnimeAnnouncerCommands(commands.Cog):
                 return
 
             if anime['title']['english'] is None:
-                english_title = self._determine_english_title(anime['synonyms'])
+                english_title = determine_english_title(anime['synonyms'])
                 if english_title is None:
                     english_title = anime['title']['romaji']   
             else:

@@ -3,6 +3,7 @@ import requests
 import os
 from datetime import datetime, time, timezone
 import sqlite3
+from utils import convert_epoch_to_local
 
 class AnimeAnnouncerTasks(commands.Cog):
     def __init__(self, bot):
@@ -11,13 +12,6 @@ class AnimeAnnouncerTasks(commands.Cog):
         self.query_anilist.start()
         self.week_reminder.start()
         self.database_backup.start()
-    
-    @staticmethod
-    def convert_epoch_to_local(unix_epoch_time):
-        dt_unix = datetime.fromtimestamp(unix_epoch_time)
-        formatted_time = dt_unix.strftime("%a %d %b, %I:%M%p")
-        return formatted_time
-    
     
     @tasks.loop(minutes=30)
     async def query_anilist(self):
@@ -132,7 +126,7 @@ class AnimeAnnouncerTasks(commands.Cog):
                 cursor.execute("UPDATE tracked_anime SET next_episode_time = ? WHERE anilist_id = ?", (anilist_time, show['id']))
                 print(f"Changing database time: {db_time} -> {anilist_time}. ({show['id']})")
                 self.bot.connection.commit()
-                await CHANNEL.send(f"⚠️ UPDATE ⚠️: **{db_english_title}**'s next episode airing time has changed. \n{db_time} ➡️ {self.convert_epoch_to_local(anilist_time)}")
+                await CHANNEL.send(f"⚠️ UPDATE ⚠️: **{db_english_title}**'s next episode airing time has changed. \n{db_time} ➡️ {convert_epoch_to_local(anilist_time)}")
         return found_change
 
     @tasks.loop(time=time(hour=21, tzinfo=timezone.utc))
