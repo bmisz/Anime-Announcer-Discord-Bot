@@ -144,6 +144,7 @@ class AnimeAnnouncerTasks(commands.Cog):
 
                     if "next_episode_time" in db_column:
                         new_val = convert_epoch_to_local(new_val)
+                        old_val = convert_epoch_to_local(old_val)
                     await CHANNEL.send(
                         f"⚠️ UPDATE ⚠️: **{db_english_title}**'s {label} has changed. \n**{old_val} ➡️ {new_val}**"
                     )
