@@ -40,14 +40,37 @@ def format_time(
 
         # Full Date Case (2026-5-29)
         dt = datetime.strptime(date, "%Y-%m-%d")
-        return dt.strftime("%a %d %b, %Y")
+        day_num = dt.day
+        ordinal_day = get_ordinal_suffix(day_num)
+        return dt.strftime(f"%A, %B {ordinal_day}, %Y")
 
     return None
 
 
 def determine_english_title(synonym_list: list[str]) -> str | None:
+    """
+    Determines if any of the given synonyms are in English.
+
+    Args:
+        synonym_list (list[str]): A list of synonyms to check.
+
+    Returns:
+        english_title (str | None): The English title if found, otherwise None.
+    """
     for synonym in synonym_list:
         language_of_syn = detect(synonym)
         if language_of_syn == "en":
             return synonym
     return None  # No synonyms were in english
+
+
+def get_ordinal_suffix(n: int) -> str:
+    n = int(n)
+
+    if 11 <= (n % 100) <= 13:
+        suffix = "th"
+    else:
+
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suffix}"
+

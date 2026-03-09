@@ -156,6 +156,9 @@ class AnimeAnnouncerTasks(commands.Cog):
                     if "next_episode_time" in db_column:
                         new_val = format_time(unix_epoch_time=new_val)
                         old_val = format_time(unix_epoch_time=old_val)
+                    elif "startDate" in db_column:
+                        new_val = format_time(date=new_val)
+                        old_val = format_time(date=old_val)
                     await CHANNEL.send(
                         f"⚠️ UPDATE ⚠️: **{db_english_title}**'s {label} has changed. \n**{old_val} ➡️ {new_val}**"
                     )
