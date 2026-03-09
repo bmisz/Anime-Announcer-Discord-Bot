@@ -17,6 +17,11 @@ class General(commands.Cog):
         user_id = ctx.author.id
         await ctx.send(f"Your Discord ID is: {user_id}")
 
+    @commands.command()
+    async def killyourself(self, ctx):
+        await ctx.send("Shutting down...")
+        await self.bot.close()
+
     # A command that repeats what you say
     @commands.command(name="echo")
     async def echo(self, ctx, *, message: str):
