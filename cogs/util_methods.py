@@ -1,16 +1,53 @@
 from langdetect import detect
 from datetime import datetime
 
-def convert_epoch_to_local(unix_epoch_time):
-    if unix_epoch_time == None:
-        return None
-    dt_unix = datetime.fromtimestamp(unix_epoch_time)
-    formatted_time = dt_unix.strftime("%a %d %b, %I:%M%p")
-    return formatted_time
 
-def determine_english_title(synonym_list):
+def format_time(
+    *, unix_epoch_time: int | None = None, date: str | None = None
+) -> str | None:
+    """
+    Converts either a Unix epoch time or a date string to a human-readable format.
+
+    Args:
+        unix_epoch_time (int | None): If specified, the Unix epoch time to convert.
+        date (str | None): If specified, the date string to convert ('year-month-day').
+    Returns:
+        formatted_time (str | None): The human-readable date string if successful, otherwise None.
+    Raises:
+        ValueError: If both 'unix_epoch_time' and 'date' are specified.
+    """
+
+    if unix_epoch_time is not None and date is not None:
+        raise ValueError("Specify either 'unix_epoch_time' or 'date', but not both.")
+    if unix_epoch_time is None and date is None:
+        return None
+
+    if unix_epoch_time is not None:
+        dt_obj = datetime.fromtimestamp(unix_epoch_time)
+        formatted_time = dt_obj.strftime("%a %d %b, %I:%M%p")
+        return formatted_time
+    if date is not None:
+        # Missing day case (2026-5-None)
+        if not date.endswith("None-None") and date.count("None") == 1:
+            clean_date = date.replace("-None", "")
+            dt = datetime.strptime(clean_date, "%Y-%m")
+            return dt.strftime("%B, %Y")
+
+        # Missing month & day case (2026-None-None)
+        if date.endswith("None-None"):
+            year_only = date.split("-")[0]
+            return year_only
+
+        # Full Date Case (2026-5-29)
+        dt = datetime.strptime(date, "%Y-%m-%d")
+        return dt.strftime("%a %d %b, %Y")
+
+    return None
+
+
+def determine_english_title(synonym_list: list[str]) -> str | None:
     for synonym in synonym_list:
         language_of_syn = detect(synonym)
-        if language_of_syn == 'en':
+        if language_of_syn == "en":
             return synonym
-    return None     # No synonyms were in english
+    return None  # No synonyms were in english

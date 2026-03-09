@@ -2,7 +2,7 @@ import requests
 from datetime import datetime
 from discord.ext import commands
 from langdetect import detect
-from .util_methods import convert_epoch_to_local, determine_english_title
+from .util_methods import format_time, determine_english_title
 
 
 class AnimeAnnouncerCommands(commands.Cog):
@@ -39,7 +39,7 @@ class AnimeAnnouncerCommands(commands.Cog):
                 f"**Romaji Title:** {title_romaji}\n"
                 f"**Status:** {status}\n"
                 f"**Start date:** {start_date}\n"
-                f"**Next episode airs:** {convert_epoch_to_local(next_episode_time)}\n"
+                f"**Next episode airs:** {format_time(unix_epoch_time=next_episode_time)}\n"
                 f"**Weekly reminder sent?:** {"Yes" if weekly_reminder_sent == 1 else "No"}"
             )
             await ctx.send(final_message)

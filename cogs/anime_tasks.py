@@ -3,7 +3,7 @@ import requests
 import os
 from datetime import datetime, time, timezone
 import sqlite3
-from .util_methods import convert_epoch_to_local
+from .util_methods import format_time
 
 
 class AnimeAnnouncerTasks(commands.Cog):
@@ -117,7 +117,7 @@ class AnimeAnnouncerTasks(commands.Cog):
                 db_status = "RELEASING"
                 await CHANNEL.send(f"🚨 **{db_english_title}** has started airing! 🚨")
 
-            chnages_to_look_for = [
+            changes_to_look_for = [
                 # anilist_info, db_info, db_column name, display_name
                 (
                     anilist_english_title,
@@ -125,16 +125,27 @@ class AnimeAnnouncerTasks(commands.Cog):
                     "title_english",
                     "english title",
                 ),
-                (anilist_status, db_status, "status", "status"),
+                (
+                    anilist_status,
+                    db_status,
+                    "status",
+                    "status",
+                ),
                 (
                     anilist_next_airing_episode,
                     db_next_airing_episode,
                     "next_episode_time",
                     "next episode airing time",
                 ),
-                (anilist_startDate, db_startDate, "startDate", "start date"),
+                (
+                    anilist_startDate,
+                    db_startDate,
+                    "startDate",
+                    "start date",
+                ),
             ]
-            for new_val, old_val, db_column, label in chnages_to_look_for:
+
+            for new_val, old_val, db_column, label in changes_to_look_for:
                 if new_val is not None and new_val != old_val:
                     cursor.execute(
                         f"UPDATE tracked_anime SET {db_column} = ? WHERE anilist_id = ?",
@@ -143,8 +154,8 @@ class AnimeAnnouncerTasks(commands.Cog):
                     print(f"{label} changed: {old_val} --> {new_val}.")
 
                     if "next_episode_time" in db_column:
-                        new_val = convert_epoch_to_local(new_val)
-                        old_val = convert_epoch_to_local(old_val)
+                        new_val = format_time(unix_epoch_time=new_val)
+                        old_val = format_time(unix_epoch_time=old_val)
                     await CHANNEL.send(
                         f"⚠️ UPDATE ⚠️: **{db_english_title}**'s {label} has changed. \n**{old_val} ➡️ {new_val}**"
                     )
@@ -152,7 +163,7 @@ class AnimeAnnouncerTasks(commands.Cog):
                     found_change = True
         if found_change:
             self.bot.connection.commit()
-            
+
         return found_change
 
     @tasks.loop(time=time(hour=21, tzinfo=timezone.utc))
