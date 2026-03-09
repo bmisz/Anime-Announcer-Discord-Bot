@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 
+
 class General(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -10,6 +11,11 @@ class General(commands.Cog):
     async def ping(self, ctx):
         """Checks the bot's latency."""
         await ctx.send(f"🏓 Pong! {round(self.bot.latency * 1000)}ms")
+
+    @commands.command()
+    async def checkid(self, ctx):
+        user_id = ctx.author.id
+        await ctx.send(f"Your Discord ID is: {user_id}")
 
     # A command that repeats what you say
     @commands.command(name="echo")
@@ -22,6 +28,7 @@ class General(commands.Cog):
     async def foo(self, ctx, bar: str = "Nothing"):
         """Just a foo command."""
         await ctx.send(f"You provided: {bar}")
+
 
 # This function is required for the bot to load this file
 async def setup(bot):
