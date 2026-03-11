@@ -16,7 +16,7 @@ class AnimeAnnouncerTasks(commands.Cog):
 
     @tasks.loop(minutes=30)
     async def query_anilist(self):
-        CHANNEL = self.bot.get_channel(self.channel_id)
+        CHANNEL  = self.bot.get_channel(self.channel_id)
         if CHANNEL is None:
             CHANNEL = await self.bot.fetch_channel(self.channel_id)
 
