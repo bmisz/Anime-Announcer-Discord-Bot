@@ -57,7 +57,7 @@ class AnimeAnnouncerCommands(commands.Cog):
             await ctx.send("Please enter an ID to start tracking.")
         else:
             user_id = ctx.author.id
-            
+
             query = """
             query ($id: Int) {
                 Media (id: $id, type: ANIME) {
@@ -101,7 +101,7 @@ class AnimeAnnouncerCommands(commands.Cog):
 
             sql = """
                 INSERT OR IGNORE INTO animes 
-                (id, title_english, title_romaji, next_episode_time, start_date, status)
+                (id, title_english, title_romaji, next_episode_airs, start_date, status)
                 VALUES (?, ?, ?, ?, ?, ?)
             """
 

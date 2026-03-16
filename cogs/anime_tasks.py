@@ -3,7 +3,7 @@ import requests
 import os
 from datetime import datetime, time, timezone
 import sqlite3
-from .util_methods import format_time
+from .util_methods import format_time, filter_ids
 
 
 class AnimeAnnouncerTasks(commands.Cog):
@@ -21,14 +21,15 @@ class AnimeAnnouncerTasks(commands.Cog):
             CHANNEL = await self.bot.fetch_channel(self.channel_id)
 
         cursor = self.bot.connection.cursor()
-        cursor.execute("SELECT anilist_id FROM tracked_anime")
-
+        cursor.execute("SELECT anime_id, user_id FROM tracked_anime")
+        # rows = [(id, uid), (id2, uid2)...]
         rows = cursor.fetchall()
-        ids = [row[0] for row in rows]
 
-        if not ids:
+        if not rows:
             print("Not tracking any anime yet, skipping any checking.")
             return
+        ids = [row[0] for row in rows]
+        
 
         query = """
         query ($ids: [Int]) {

@@ -73,3 +73,13 @@ def get_ordinal_suffix(n: int) -> str:
 
         suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
     return f"{n}{suffix}"
+
+def filter_ids(rows: list[tuple[int, int]]) -> list[tuple[int, list[int]]]:
+    grouped_data = {}
+
+    for show_id, user_id in rows:
+        if show_id not in grouped_data:
+            grouped_data[show_id] = []
+        grouped_data[show_id].append(user_id)
+
+    return list(grouped_data.items())

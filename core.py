@@ -30,8 +30,12 @@ class AnimeAnnouncerBot(commands.Bot):
                 await self.load_extension(f"cogs.{filename[:-3]}")
                 extensionLocation = filename.index(".")
                 cogName = filename[:extensionLocation]
-                print(f"Successfully loaded {cogName} cog.")
+                print(f"Successfully loaded {cogName} cog.") 
         self.cursor.executescript(
+            # CREATE TABLE IF NOT EXISTS users {
+            #     user_id INTEGER PRIMARY KEY,
+            #     name TEXT
+            # }
             """
             CREATE TABLE IF NOT EXISTS animes (
                 id INTEGER PRIMARY KEY,
