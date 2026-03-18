@@ -14,7 +14,7 @@ class AnimeAnnouncerTasks(commands.Cog):
         # self.week_reminder.start()
         self.database_backup.start()
 
-    @tasks.loop(seconds=10)
+    @tasks.loop(minutes=25)
     async def query_anilist(self):
         CHANNEL = self.bot.get_channel(self.channel_id)
         if CHANNEL is None:

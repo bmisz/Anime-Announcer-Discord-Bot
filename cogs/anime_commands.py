@@ -115,14 +115,7 @@ class AnimeAnnouncerCommands(commands.Cog):
                     english_title = anime["title"]["romaji"]
             else:
                 english_title = anime["title"]["english"]
-            cursor.execute(
-                """
-                INSERT INTO tracked_anime
-                (anime_id, user_id, anime_nickname, weekly_reminders_toggled)
-                VALUES (?, ?, ?, ?)
-                """,
-                (anime_id_int, user_id, None, 0)
-            )
+
             cursor.execute(
                 """
                 INSERT OR IGNORE INTO animes 
@@ -137,6 +130,14 @@ class AnimeAnnouncerCommands(commands.Cog):
                     start_date,
                     anime["status"],
                 ),
+            )
+            cursor.execute(
+                """
+                INSERT INTO tracked_anime
+                (anime_id, user_id, anime_nickname, weekly_reminders_toggled)
+                VALUES (?, ?, ?, ?)
+                """,
+                (anime_id_int, user_id, None, 0)
             )
 
             self.bot.connection.commit()
@@ -182,7 +183,7 @@ class AnimeAnnouncerCommands(commands.Cog):
         user_id = ctx.author.id
         cursor = self.bot.connection.cursor()
         cursor.execute(
-            "SELECT t.user_id, a.title_english, a.id FROM tracked_anime t JOIN animes a ON t.anime_id = a.id WHERE t.user_id = ?",
+            "SELECT a.title_english, a.id FROM tracked_anime t JOIN animes a ON t.anime_id = a.id WHERE t.user_id = ?",
             (user_id,),
         )
         rows = cursor.fetchall()
@@ -192,8 +193,8 @@ class AnimeAnnouncerCommands(commands.Cog):
             )
             return
         rows_as_strings = []
-        for id, title in rows:
-            rows_as_strings.append(f"**• {title}** *(ID: {id})*")
+        for title, anime_id in rows:
+            rows_as_strings.append(f"**• {title}** *(ID: {anime_id})*")
 
         rows_as_strings.insert(0, "# Tracked Animes:")
         final_string = "\n".join(rows_as_strings)
