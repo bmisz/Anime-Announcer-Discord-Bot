@@ -99,12 +99,6 @@ class AnimeAnnouncerCommands(commands.Cog):
                 else None
             )
 
-            sql = """
-                INSERT OR IGNORE INTO animes 
-                (id, title_english, title_romaji, next_episode_airs, start_date, status)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """
-
             cursor = self.bot.connection.cursor()
 
             cursor.execute(
@@ -121,9 +115,20 @@ class AnimeAnnouncerCommands(commands.Cog):
                     english_title = anime["title"]["romaji"]
             else:
                 english_title = anime["title"]["english"]
-
             cursor.execute(
-                sql,
+                """
+                INSERT INTO tracked_anime
+                (anime_id, user_id, anime_nickname, weekly_reminders_toggled)
+                VALUES (?, ?, ?, ?)
+                """,
+                (anime_id_int, user_id, None, 0)
+            )
+            cursor.execute(
+                """
+                INSERT OR IGNORE INTO animes 
+                (id, title_english, title_romaji, next_episode_airs, start_date, status)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
                 (
                     anime["id"],
                     english_title,
