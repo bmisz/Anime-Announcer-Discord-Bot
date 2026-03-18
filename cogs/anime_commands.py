@@ -31,7 +31,7 @@ class AnimeAnnouncerCommands(commands.Cog):
                 anilist_id,
                 title_english,
                 title_romaji,
-                next_episode_time,
+                next_episode_airs,
                 start_date,
                 status,
                 weekly_reminder_sent,
@@ -41,7 +41,7 @@ class AnimeAnnouncerCommands(commands.Cog):
                 f"**Romaji Title:** {title_romaji}\n"
                 f"**Status:** {status}\n"
                 f"**Start date:** {start_date}\n"
-                f"**Next episode airs:** {format_time(unix_epoch_time=next_episode_time)}\n"
+                f"**Next episode airs:** {format_time(unix_epoch_time=next_episode_airs)}\n"
                 f"**Weekly reminder sent?:** {"Yes" if weekly_reminder_sent == 1 else "No"}"
             )
             await ctx.send(final_message)
@@ -133,6 +133,7 @@ class AnimeAnnouncerCommands(commands.Cog):
                     anime["status"],
                 ),
             )
+
             self.bot.connection.commit()
 
             await ctx.send(f"Now tracking **{english_title} ({anime_id_int})**")
