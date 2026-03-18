@@ -21,7 +21,7 @@ class AnimeAnnouncerBot(commands.Bot):
 
     async def setup_hook(self):
         """This runs before the bot connects to Discord."""
-        # This is where you load your Cogs (the other .py files)
+        # Cogs load here
         for filename in os.listdir("./cogs"):
             if filename == "util_methods.py":
                 print("Skipping utils file in cogs init.")
@@ -30,9 +30,9 @@ class AnimeAnnouncerBot(commands.Bot):
                 await self.load_extension(f"cogs.{filename[:-3]}")
                 extensionLocation = filename.index(".")
                 cogName = filename[:extensionLocation]
-                print(f"Successfully loaded {cogName} cog.") 
+                print(f"Successfully loaded {cogName} cog.")
         self.cursor.executescript(
-            # CREATE TABLE IF NOT EXISTS users {
+            # CREATE TABLE IF NOT EXISTS users {    This table is Unnecessary at the moment.
             #     user_id INTEGER PRIMARY KEY,
             #     name TEXT
             # }
@@ -59,4 +59,4 @@ class AnimeAnnouncerBot(commands.Bot):
     async def on_ready(self):
         if self.user:
             print(f"Logged in as {self.user} (ID: {self.user.id})")
-        print("------")
+        print("------------------")
