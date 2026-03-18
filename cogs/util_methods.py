@@ -73,3 +73,31 @@ def get_ordinal_suffix(n: int) -> str:
 
         suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
     return f"{n}{suffix}"
+
+
+def filter_ids(rows: list[tuple[int, int]]) -> list[tuple[int, list[int]]]:
+    """
+    Takes a list of tuples containing anime IDs and user IDs and groups them by anime ID.
+
+    Args:
+        rows (list[tuple[int, int]]): A list of tuples containing anime IDs and user IDs.
+
+    Returns:
+        list[tuple[int, list[int]]]: A list of tuples containing anime IDs and lists of user IDs.
+    """
+    grouped_data = {}
+
+    for show_id, user_id in rows:
+        if show_id not in grouped_data:
+            grouped_data[show_id] = []
+        grouped_data[show_id].append(user_id)
+
+    return list(grouped_data.items())
+
+
+def get_mention_string(users_who_track: list[int]) -> str:
+    prefix = "<@"
+    suffix = ">"
+    final_string = "\n".join([f"{prefix}{user}{suffix}" for user in users_who_track])
+    return final_string  # This would be horrific UX with more than a couple users but I dont have that problem so sucks to be the person who does :)
+    # I would probably make a custom role for everyone who tracks one anime so you can just @ the role rather than ever user

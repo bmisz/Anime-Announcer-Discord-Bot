@@ -3,10 +3,11 @@ from datetime import datetime
 from discord.ext import commands
 from langdetect import detect
 from .util_methods import format_time, determine_english_title
+from core import AnimeAnnouncerBot
 
 
 class AnimeAnnouncerCommands(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: AnimeAnnouncerBot):
         self.bot = bot
 
     @commands.command(name="info")
@@ -20,6 +21,7 @@ class AnimeAnnouncerCommands(commands.Cog):
             await ctx.send("Please enter an ID you track to get info on it")
             return
         cursor = self.bot.connection.cursor()
+        # Ignore this for multi- user feature for now as !info is going to be reworked soon
         cursor.execute(
             "SELECT * FROM tracked_anime WHERE anilist_id = ?", (anime_id_int,)
         )
@@ -29,7 +31,7 @@ class AnimeAnnouncerCommands(commands.Cog):
                 anilist_id,
                 title_english,
                 title_romaji,
-                next_episode_time,
+                next_episode_airs,
                 start_date,
                 status,
                 weekly_reminder_sent,
@@ -39,13 +41,13 @@ class AnimeAnnouncerCommands(commands.Cog):
                 f"**Romaji Title:** {title_romaji}\n"
                 f"**Status:** {status}\n"
                 f"**Start date:** {start_date}\n"
-                f"**Next episode airs:** {format_time(unix_epoch_time=next_episode_time)}\n"
+                f"**Next episode airs:** {format_time(unix_epoch_time=next_episode_airs)}\n"
                 f"**Weekly reminder sent?:** {"Yes" if weekly_reminder_sent == 1 else "No"}"
             )
             await ctx.send(final_message)
 
     @commands.command(name="track")
-    async def track(self, ctx, anime_id: str = ""):
+    async def track(self, ctx: commands.Context, anime_id: str = ""):
         try:
             anime_id_int = int(anime_id)
         except ValueError:
@@ -54,6 +56,8 @@ class AnimeAnnouncerCommands(commands.Cog):
         if anime_id == "":
             await ctx.send("Please enter an ID to start tracking.")
         else:
+            user_id = ctx.author.id
+
             query = """
             query ($id: Int) {
                 Media (id: $id, type: ANIME) {
@@ -95,16 +99,11 @@ class AnimeAnnouncerCommands(commands.Cog):
                 else None
             )
 
-            sql = """
-                INSERT OR REPLACE INTO tracked_anime 
-                (anilist_id, title_english, title_romaji, next_episode_time, startDate, status)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """
-
             cursor = self.bot.connection.cursor()
 
             cursor.execute(
-                "SELECT 1 FROM tracked_anime WHERE anilist_id = ?", (anime_id_int,)
+                "SELECT 1 FROM tracked_anime WHERE user_id = ? AND anime_id = ?",
+                (user_id, anime_id_int),
             )
             if cursor.fetchone():
                 await ctx.send("You've already started tracking this show.")
@@ -118,7 +117,11 @@ class AnimeAnnouncerCommands(commands.Cog):
                 english_title = anime["title"]["english"]
 
             cursor.execute(
-                sql,
+                """
+                INSERT OR IGNORE INTO animes 
+                (id, title_english, title_romaji, next_episode_airs, start_date, status)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
                 (
                     anime["id"],
                     english_title,
@@ -128,6 +131,15 @@ class AnimeAnnouncerCommands(commands.Cog):
                     anime["status"],
                 ),
             )
+            cursor.execute(
+                """
+                INSERT INTO tracked_anime
+                (anime_id, user_id, anime_nickname, weekly_reminders_toggled)
+                VALUES (?, ?, ?, ?)
+                """,
+                (anime_id_int, user_id, None, 0)
+            )
+
             self.bot.connection.commit()
 
             await ctx.send(f"Now tracking **{english_title} ({anime_id_int})**")
@@ -143,23 +155,37 @@ class AnimeAnnouncerCommands(commands.Cog):
             await ctx.send("Please enter an ID to stop tracking.")
             return
 
+        user_id = ctx.author.id
         cursor = self.bot.connection.cursor()
         cursor.execute(
-            "SELECT title_english FROM tracked_anime WHERE anilist_id = ?",
+            "SELECT title_english FROM animes WHERE id = ?",
             (anime_id_int,),
         )
-        name = cursor.fetchone()
-        name = name[0]
+        name = cursor.fetchone()[0]
+
         cursor.execute(
-            "DELETE FROM tracked_anime WHERE anilist_id = ?", (anime_id_int,)
+            "DELETE FROM tracked_anime WHERE anime_id = ? AND user_id = ?",
+            (anime_id_int, user_id),
         )
         self.bot.connection.commit()
+
+        cursor.execute(
+            "SELECT 1 from tracked_anime WHERE anime_id = ?", (anime_id_int,)
+        )
+        if not cursor.fetchone():
+            # Delete from saved anime database if no ones tracking it anymore
+            cursor.execute("DELETE FROM animes WHERE id = ?", (anime_id_int,))
+            self.bot.connection.commit()
         await ctx.send(f"Stopped tracking **{name} ({anime_id_int})**")
 
     @commands.command(name="list")
     async def list(self, ctx):
+        user_id = ctx.author.id
         cursor = self.bot.connection.cursor()
-        cursor.execute("SELECT anilist_id, title_english FROM tracked_anime")
+        cursor.execute(
+            "SELECT a.title_english, a.id FROM tracked_anime t JOIN animes a ON t.anime_id = a.id WHERE t.user_id = ?",
+            (user_id,),
+        )
         rows = cursor.fetchall()
         if not rows:
             await ctx.send(
@@ -167,8 +193,8 @@ class AnimeAnnouncerCommands(commands.Cog):
             )
             return
         rows_as_strings = []
-        for id, title in rows:
-            rows_as_strings.append(f"**• {title}** *(ID: {id})*")
+        for title, anime_id in rows:
+            rows_as_strings.append(f"**• {title}** *(ID: {anime_id})*")
 
         rows_as_strings.insert(0, "# Tracked Animes:")
         final_string = "\n".join(rows_as_strings)
