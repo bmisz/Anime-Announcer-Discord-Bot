@@ -57,7 +57,12 @@ class AnimeAnnouncerTasks(commands.Cog):
         variables = {"ids": show_ids}
         url = "https://graphql.anilist.co"
 
-        response = requests.post(url, json={"query": query, "variables": variables})
+        try:
+            response = requests.post(url, json={"query": query, "variables": variables})
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as err:
+            print(f"An HTTP error occured: {err}")
+            return
         data = response.json()
 
         changes = await self._look_for_changes(data, ids)

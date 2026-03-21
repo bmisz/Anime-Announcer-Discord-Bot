@@ -137,7 +137,7 @@ class AnimeAnnouncerCommands(commands.Cog):
                 (anime_id, user_id, anime_nickname, weekly_reminders_toggled)
                 VALUES (?, ?, ?, ?)
                 """,
-                (anime_id_int, user_id, None, 0)
+                (anime_id_int, user_id, None, 0),
             )
 
             self.bot.connection.commit()
