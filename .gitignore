@@ -3,3 +3,4 @@ testing/
 anime_bot.db
 todo.md
 backups/
+/__pycache__
