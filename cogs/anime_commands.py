@@ -23,7 +23,7 @@ class AnimeAnnouncerCommands(commands.Cog):
         cursor = self.bot.connection.cursor()
         # Ignore this for multi- user feature for now as !info is going to be reworked soon
         cursor.execute(
-            "SELECT * FROM tracked_anime WHERE anilist_id = ?", (anime_id_int,)
+            "SELECT * FROM tracked_anime WHERE anime_id = ?", (anime_id_int,)
         )
         row = cursor.fetchone()
         if row:
