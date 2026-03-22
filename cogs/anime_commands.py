@@ -22,9 +22,7 @@ class AnimeAnnouncerCommands(commands.Cog):
             return
         cursor = self.bot.connection.cursor()
         # Ignore this for multi- user feature for now as !info is going to be reworked soon
-        cursor.execute(
-            "SELECT * FROM tracked_anime WHERE anime_id = ?", (anime_id_int,)
-        )
+        cursor.execute("SELECT * FROM animes WHERE id = ?", (anime_id_int,))
         row = cursor.fetchone()
         if row:
             (
@@ -34,7 +32,7 @@ class AnimeAnnouncerCommands(commands.Cog):
                 next_episode_airs,
                 start_date,
                 status,
-                weekly_reminder_sent,
+                # weekly_reminder_sent,
             ) = row
             final_message = (
                 f"# **{title_english}** *{anilist_id}*\n"
@@ -42,7 +40,7 @@ class AnimeAnnouncerCommands(commands.Cog):
                 f"**Status:** {status}\n"
                 f"**Start date:** {start_date}\n"
                 f"**Next episode airs:** {format_time(unix_epoch_time=next_episode_airs)}\n"
-                f"**Weekly reminder sent?:** {"Yes" if weekly_reminder_sent == 1 else "No"}"
+                # f"**Weekly reminder sent?:** {"Yes" if weekly_reminder_sent == 1 else "No"}"
             )
             await ctx.send(final_message)
 
