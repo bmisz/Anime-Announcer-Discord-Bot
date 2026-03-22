@@ -1,5 +1,6 @@
 from langdetect import detect
 from datetime import datetime
+from pathlib import Path
 
 
 def format_time(
@@ -101,3 +102,19 @@ def get_mention_string(users_who_track: list[int]) -> str:
     final_string = "\n".join([f"{prefix}{user}{suffix}" for user in users_who_track])
     return final_string  # This would be horrific UX with more than a couple users but I dont have that problem so sucks to be the person who does :)
     # I would probably make a custom role for everyone who tracks one anime so you can just @ the role rather than ever user
+
+
+def load_query(filename: str) -> str:
+    """
+    Loads a GraphQL query from a file.
+
+    Args:
+        filename (str): The name of the file to load from.
+
+    Returns:
+        str: The contents of the file as a string.
+    """
+
+    BASE_DIR = Path(__file__).resolve().parent
+    TARGET_FILE = BASE_DIR / "graphql" / filename
+    return TARGET_FILE.read_text()

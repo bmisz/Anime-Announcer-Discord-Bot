@@ -1,0 +1,18 @@
+query ($ids: [Int]) {
+            Page {
+                media (id_in: $ids, type: ANIME) {
+                    id
+                    nextAiringEpisode { airingAt }
+                    status
+                    startDate {
+                        year
+                        month
+                        day
+                    }
+                    title {
+                        english
+                        romaji
+                    }
+                }
+            }
+        }

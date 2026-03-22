@@ -2,7 +2,7 @@ import requests
 from datetime import datetime
 from discord.ext import commands
 from langdetect import detect
-from .util_methods import format_time, determine_english_title
+from .util_methods import format_time, determine_english_title, load_query
 from core import AnimeAnnouncerBot
 
 
@@ -21,7 +21,6 @@ class AnimeAnnouncerCommands(commands.Cog):
             await ctx.send("Please enter an ID you track to get info on it")
             return
         cursor = self.bot.connection.cursor()
-        # Ignore this for multi- user feature for now as !info is going to be reworked soon
         cursor.execute("SELECT * FROM animes WHERE id = ?", (anime_id_int,))
         row = cursor.fetchone()
         if row:
@@ -55,26 +54,7 @@ class AnimeAnnouncerCommands(commands.Cog):
             await ctx.send("Please enter an ID to start tracking.")
         else:
             user_id = ctx.author.id
-
-            query = """
-            query ($id: Int) {
-                Media (id: $id, type: ANIME) {
-                    id
-                    nextAiringEpisode { airingAt }
-                    status
-                    startDate{
-                        year
-                        month
-                        day
-                    }
-                    title{
-                        english
-                        romaji
-                    }
-                    synonyms
-                }
-            }
-            """
+            query = load_query("track.graphql")
 
             variables = {"id": anime_id_int}
             url = "https://graphql.anilist.co"

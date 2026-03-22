@@ -3,7 +3,7 @@ import requests
 import os
 from datetime import datetime, time, timezone
 import sqlite3
-from .util_methods import format_time, filter_ids, get_mention_string
+from .util_methods import format_time, filter_ids, get_mention_string, load_query
 
 
 class AnimeAnnouncerTasks(commands.Cog):
@@ -33,26 +33,7 @@ class AnimeAnnouncerTasks(commands.Cog):
 
         show_ids = [show[0] for show in ids]
 
-        query = """
-        query ($ids: [Int]) {
-            Page {
-                media (id_in: $ids, type: ANIME) {
-                    id
-                    nextAiringEpisode { airingAt }
-                    status
-                    startDate {
-                        year
-                        month
-                        day
-                    }
-                    title {
-                        english
-                        romaji
-                    }
-                }
-            }
-        }
-        """
+        query = load_query("update_checker.graphql")
 
         variables = {"ids": show_ids}
         url = "https://graphql.anilist.co"
