@@ -51,13 +51,14 @@ class AnimeAnnouncerTasks(commands.Cog):
         if changes == False:
             print(f"Searched through {len(ids)} shows and found no changes.")
 
-    async def _look_for_changes(self, anilist_data, ids) -> bool:
+    async def _look_for_changes(
+        self, anilist_data, ids: list[tuple[int, list[int]]]
+    ) -> bool:
         CHANNEL = self.bot.get_channel(self.channel_id)
         cursor = self.bot.connection.cursor()
 
-        print("Looking for changes...")
         found_change = False
-        show_index = 0
+
         for i, show in enumerate(anilist_data["data"]["Page"]["media"]):
 
             anilist_english_title = show["title"]["english"]
@@ -155,11 +156,11 @@ class AnimeAnnouncerTasks(commands.Cog):
                     await CHANNEL.send(
                         f"⚠️ UPDATE ⚠️: **{db_english_title}**'s {label} has changed. \n**{old_val} ➡️ {new_val}**"
                     )
-
+                    user_mention_string = get_mention_string(ids[i][1])
+                    await CHANNEL.send(user_mention_string)
                     found_change = True
+
             if found_change:
-                user_mention_string = get_mention_string(ids[i][1])
-                await CHANNEL.send(user_mention_string)
                 self.bot.connection.commit()
 
         return found_change
