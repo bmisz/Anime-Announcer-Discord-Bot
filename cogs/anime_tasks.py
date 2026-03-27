@@ -86,10 +86,10 @@ class AnimeAnnouncerTasks(commands.Cog):
             if anilist_status != db_status and anilist_status == "FINISHED":
                 found_change = True
 
-                cursor.execute("DELETE FROM animes WHERE id = ?", (show["id"],))
                 cursor.execute(
                     "DELETE FROM tracked_anime WHERE anime_id = ?", (show["id"],)
                 )
+                cursor.execute("DELETE FROM animes WHERE id = ?", (show["id"],))
 
                 print(f"Removing {show['id']} from database due to show concluding.")
                 self.bot.connection.commit()
