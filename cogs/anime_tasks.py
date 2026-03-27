@@ -60,15 +60,15 @@ class AnimeAnnouncerTasks(commands.Cog):
         found_change = False
 
         for i, show in enumerate(anilist_data["data"]["Page"]["media"]):
-
+            users_who_track = ids[i][1]
             anilist_english_title = show["title"]["english"]
             anilist_status = show["status"]
+            startDate = show["startDate"]
             anilist_next_airing_episode = (
                 show["nextAiringEpisode"]["airingAt"]
                 if show["nextAiringEpisode"]
                 else None
             )
-            startDate = show["startDate"]
             anilist_startDate = (
                 f"{startDate['year']}-{startDate['month']}-{startDate['day']}"
             )
@@ -83,6 +83,7 @@ class AnimeAnnouncerTasks(commands.Cog):
 
             db_status, db_next_airing_episode, db_startDate, db_english_title = row
 
+            # If anime concludes
             if anilist_status != db_status and anilist_status == "FINISHED":
                 found_change = True
 
@@ -93,11 +94,13 @@ class AnimeAnnouncerTasks(commands.Cog):
 
                 print(f"Removing {show['id']} from database due to show concluding.")
                 self.bot.connection.commit()
+                mention_string = get_mention_string(users_who_track)
                 await CHANNEL.send(
-                    f"❌ **{db_english_title}** has concluded and has been removed from your tracking list. ❌"
+                    f"❌ **{db_english_title}** has concluded and has been removed from your tracking list. ❌\n{mention_string}"
                 )
                 continue
 
+            # If anime starts releasing
             if anilist_status == "RELEASING" and db_status == "NOT_YET_RELEASED":
                 found_change = True
                 cursor.execute(
@@ -109,7 +112,8 @@ class AnimeAnnouncerTasks(commands.Cog):
                 )
                 self.bot.connection.commit()
                 db_status = "RELEASING"
-                await CHANNEL.send(f"🚨 **{db_english_title}** has started airing! 🚨")
+                mention_string = get_mention_string(users_who_track)
+                await CHANNEL.send(f"🚨 **{db_english_title}** has started airing! 🚨\n{mention_string}")
 
             changes_to_look_for = [
                 # anilist_info, db_info, db_column name, display_name
@@ -156,7 +160,7 @@ class AnimeAnnouncerTasks(commands.Cog):
                     await CHANNEL.send(
                         f"⚠️ UPDATE ⚠️: **{db_english_title}**'s {label} has changed. \n**{old_val} ➡️ {new_val}**"
                     )
-                    user_mention_string = get_mention_string(ids[i][1])
+                    user_mention_string = get_mention_string(users_who_track)
                     await CHANNEL.send(user_mention_string)
                     found_change = True
 
