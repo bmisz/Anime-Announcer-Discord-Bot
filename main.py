@@ -8,5 +8,5 @@ if __name__ == "__main__":
     bot = AnimeAnnouncerBot()
     token = os.getenv("DISCORD_TOKEN")
     if token is None:
-        raise ValueError("DISCORD_TOKEN environment variable is not set")
+        raise TypeError("DISCORD_TOKEN environment variable is not set")
     bot.run(token)
