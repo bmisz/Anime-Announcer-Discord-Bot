@@ -138,7 +138,7 @@ class AnimeAnnouncerTasks(commands.Cog):
                 (
                     anilist_startDate,
                     db_startDate,
-                    "startDate",
+                    "start_date",
                     "start date",
                 ),
             ]
