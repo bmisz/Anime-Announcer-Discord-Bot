@@ -3,6 +3,7 @@ import requests
 import os
 from datetime import datetime, time, timezone
 import sqlite3
+import asyncio
 from .util_methods import format_time, filter_ids, get_mention_string, load_query
 
 
@@ -227,7 +228,7 @@ class AnimeAnnouncerTasks(commands.Cog):
             dest = sqlite3.connect(backup_file)
 
             with dest:
-                source.backup(dest)
+                await asyncio.to_thread(source.backup, dest)
 
             print(f"Backup successful: {backup_file}")
         except Exception as e:
