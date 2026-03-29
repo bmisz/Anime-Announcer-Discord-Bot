@@ -60,6 +60,8 @@ class AnimeAnnouncerTasks(commands.Cog):
         self, anilist_data, ids: list[tuple[int, list[int]]]
     ) -> bool:
         CHANNEL = self.bot.get_channel(self.channel_id)
+        if CHANNEL is None:
+            CHANNEL = await self.bot.fetch_channel(self.channel_id)
         cursor = self.bot.connection.cursor()
 
         found_change = False
@@ -139,7 +141,7 @@ class AnimeAnnouncerTasks(commands.Cog):
                 (
                     anilist_startDate,
                     db_startDate,
-                    "startDate",
+                    "start_date",
                     "start date",
                 ),
             ]

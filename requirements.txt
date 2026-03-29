@@ -2,3 +2,4 @@ discord.py==2.7.1
 langdetect==1.0.9
 python-dotenv==1.2.2
 Requests==2.32.5
+strip-markdown==1.3

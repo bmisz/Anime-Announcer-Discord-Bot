@@ -1,5 +1,7 @@
 import requests
 from datetime import datetime
+import discord
+from strip_markdown import strip_markdown
 from discord.ext import commands
 from langdetect import detect
 from .util_methods import format_time, determine_english_title, load_query
@@ -20,28 +22,39 @@ class AnimeAnnouncerCommands(commands.Cog):
         if anime_id == "":
             await ctx.send("Please enter an ID you track to get info on it")
             return
-        cursor = self.bot.connection.cursor()
-        cursor.execute("SELECT * FROM animes WHERE id = ?", (anime_id_int,))
-        row = cursor.fetchone()
-        if row:
-            (
-                anilist_id,
-                title_english,
-                title_romaji,
-                next_episode_airs,
-                start_date,
-                status,
-                # weekly_reminder_sent,
-            ) = row
-            final_message = (
-                f"# **{title_english}** *{anilist_id}*\n"
-                f"**Romaji Title:** {title_romaji}\n"
-                f"**Status:** {status}\n"
-                f"**Start date:** {start_date}\n"
-                f"**Next episode airs:** {format_time(unix_epoch_time=next_episode_airs)}\n"
-                # f"**Weekly reminder sent?:** {"Yes" if weekly_reminder_sent == 1 else "No"}"
-            )
-            await ctx.send(final_message)
+        query = load_query("info.graphql")
+        variables = {"id": anime_id_int}
+        url = "https://graphql.anilist.co"
+
+        response = requests.post(url, json={"query": query, "variables": variables})
+        data = response.json()
+
+        if data["data"]["Media"] is None:
+            print("'data[data][Media]' returned None in info command.")
+        anime = data["data"]["Media"]
+
+        title = anime["title"]["english"]
+        if title is None:
+            title = determine_english_title(anime["synonyms"])
+            if title is None:
+                title = anime["title"]["romaji"]
+
+        if anime["nextAiringEpisode"] is None:
+            next_ep = "This anime has concluded."
+        else:
+            next_ep = f"Next episode is on: {format_time(unix_epoch_time=anime["nextAiringEpisode"]["airingAt"])}"
+
+        description = strip_markdown(anime["description"])
+        embed = discord.Embed(
+            title=title,
+            description=description,
+            color=0x206694,
+        )
+        embed.set_image(url=anime["coverImage"]["large"])
+        embed.add_field(name="Average Score", value=anime["averageScore"], inline=True)
+        embed.add_field(name="Next Episode", value=next_ep, inline=True)
+
+        await ctx.send(embed=embed)
 
     @commands.command(name="track")
     async def track(self, ctx: commands.Context, anime_id: str = ""):
