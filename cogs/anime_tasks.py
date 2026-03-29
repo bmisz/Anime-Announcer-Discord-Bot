@@ -4,6 +4,7 @@ import os
 from datetime import datetime, time, timezone
 import sqlite3
 import asyncio
+from pathlib import Path
 from .util_methods import format_time, filter_ids, get_mention_string, load_query
 
 
@@ -21,7 +22,8 @@ class AnimeAnnouncerTasks(commands.Cog):
         if CHANNEL is None:
             CHANNEL = await self.bot.fetch_channel(self.channel_id)
 
-        cursor = self.bot.connection.cursor()
+        cursor: sqlite3.Cursor = self.bot.connection.cursor()
+        
         cursor.execute("SELECT anime_id, user_id FROM tracked_anime")
         # rows = [(id, uid), (id2, uid2)...]
         rows: list[tuple[int, int]] = cursor.fetchall()
@@ -220,21 +222,26 @@ class AnimeAnnouncerTasks(commands.Cog):
         if not os.path.exists("backups"):
             os.makedirs("backups")
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_file = f"backups/database_backup_{timestamp}.db"
+        def create_backup(backups_folder_path, source_path):
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_file = Path(backups_folder_path) / f"database_backup_{timestamp}.db"
 
+            with sqlite3.connect(source_path) as src:
+                with sqlite3.connect(backup_file) as dest:
+                    src.backup(dest)
+            print(f"Database backup completed!: {backup_file}")
+            
         try:
-            source = self.bot.connection
-            dest = sqlite3.connect(backup_file)
+            root = Path(__file__).parent.parent
+            dest = (root / "backups").resolve()
+            anime_bot_db = (root / "anime_bot.db").resolve()
 
-            with dest:
-                await asyncio.to_thread(source.backup, dest)
+            await asyncio.to_thread(create_backup, dest, anime_bot_db)
 
-            print(f"Backup successful: {backup_file}")
         except Exception as e:
             print(f"Backup failed: {e}")
-        finally:
-            dest.close()
+
+
 
     @query_anilist.before_loop
     async def before_query_anilist(self):
