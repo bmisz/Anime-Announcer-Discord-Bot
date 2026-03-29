@@ -1,17 +1,22 @@
 from discord.ext import commands, tasks
 import requests
 import os
+from dotenv import load_dotenv
 from datetime import datetime, time, timezone
 import sqlite3
 import asyncio
 from pathlib import Path
 from .util_methods import format_time, filter_ids, get_mention_string, load_query
 
+load_dotenv()
+
 
 class AnimeAnnouncerTasks(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.channel_id = 1469512207355347143
+        self.channel_id = os.getenv("ANNOUNCEMENT_CHANNEL_ID")
+        if self.channel_id is None:
+            raise TypeError("ANNOUNCEMENT_CHANNEL_ID is not set.")
         self.query_anilist.start()
         # self.week_reminder.start()
         self.database_backup.start()
@@ -58,6 +63,8 @@ class AnimeAnnouncerTasks(commands.Cog):
         self, anilist_data, ids: list[tuple[int, list[int]]]
     ) -> bool:
         CHANNEL = self.bot.get_channel(self.channel_id)
+        if CHANNEL is None:
+            CHANNEL = await self.bot.fetch_channel(self.channel_id)
         cursor = self.bot.connection.cursor()
 
         found_change = False

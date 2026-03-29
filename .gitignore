@@ -4,3 +4,4 @@ anime_bot.db
 todo.md
 backups/
 __pycache__/
+venv/
