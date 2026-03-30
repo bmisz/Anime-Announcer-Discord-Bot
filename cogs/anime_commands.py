@@ -40,6 +40,7 @@ class AnimeAnnouncerCommands(commands.Cog):
                 title = anime["title"]["romaji"]
 
         if anime["nextAiringEpisode"] is None:
+            # TODO if the show has no next airing date but has not concluded it still shows that the show has concluded
             next_ep = "This anime has concluded."
         else:
             next_ep = f"Next episode is on: {format_time(unix_epoch_time=anime["nextAiringEpisode"]["airingAt"])}"
