@@ -26,7 +26,7 @@ class AnimeAnnouncerCommands(commands.Cog):
         variables = {"id": anime_id_int}
         url = "https://graphql.anilist.co"
 
-        response = requests.post(url, json={"query": query, "vari ables": variables})
+        response = requests.post(url, json={"query": query, "variables": variables})
         data = response.json()
 
         if data["data"]["Media"] is None:
@@ -40,7 +40,7 @@ class AnimeAnnouncerCommands(commands.Cog):
                 title = anime["title"]["romaji"]
 
         description = strip_markdown(anime["description"])
-        
+
         embed = discord.Embed(
             title=title,
             description=description,
@@ -51,14 +51,18 @@ class AnimeAnnouncerCommands(commands.Cog):
             next_ep = f"Next episode is on: {format_time(unix_epoch_time=anime["nextAiringEpisode"]["airingAt"])}"
             embed.add_field(name="Next Episode", value=next_ep, inline=True)
         elif anime["nextAiringEpisode"] is None and anime["status"] != "FINISHED":
-           embed.add_field(name="Concluded", value="This anime has concluded", inline=True)
+            embed.add_field(
+                name="Concluded", value="This anime has concluded", inline=True
+            )
         else:
-            embed.add_field(name="Next Episode", value="The date of the next episode is not currently known", inline=True)
-
+            embed.add_field(
+                name="Next Episode",
+                value="The date of the next episode is not currently known",
+                inline=True,
+            )
 
         embed.set_image(url=anime["coverImage"]["large"])
         embed.add_field(name="Average Score", value=anime["averageScore"], inline=True)
-        
 
         await ctx.send(embed=embed)
 
