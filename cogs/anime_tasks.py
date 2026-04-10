@@ -124,6 +124,7 @@ class AnimeAnnouncerTasks(commands.Cog):
                 db_status = "RELEASING"
                 mention_string = get_mention_string(users_who_track)
                 await CHANNEL.send(f"🚨 **{db_english_title}** has started airing! 🚨\n{mention_string}")
+                continue
 
             changes_to_look_for = [
                 # anilist_info, db_info, db_column name, display_name
@@ -167,11 +168,11 @@ class AnimeAnnouncerTasks(commands.Cog):
                     elif "startDate" in db_column:
                         new_val = format_time(date=new_val)
                         old_val = format_time(date=old_val)
-                    await CHANNEL.send(
-                        f"⚠️ UPDATE ⚠️: **{db_english_title}**'s {label} has changed. \n**{old_val} ➡️ {new_val}**"
-                    )
                     user_mention_string = get_mention_string(users_who_track)
-                    await CHANNEL.send(user_mention_string)
+                    await CHANNEL.send(
+                        f"⚠️ UPDATE ⚠️: **{db_english_title}**'s {label} has changed. \n**{old_val} ➡️ {new_val}**\n{user_mention_string}"
+                    )
+
                     found_change = True
 
             if found_change:
@@ -249,7 +250,7 @@ class AnimeAnnouncerTasks(commands.Cog):
             print(f"Backup failed: {e}")
 
 
-
+    
     @query_anilist.before_loop
     async def before_query_anilist(self):
         print("Waiting until bot is initialized until querying AniList...")
