@@ -55,9 +55,13 @@ class AnimeAnnouncerCommands(commands.Cog):
                 name="Concluded", value="This anime has concluded", inline=True
             )
         else:
+            year = anime["startDate"]["year"]
+            month = anime["startDate"]["month"]
+            day = anime["startDate"]["day"]
+
             embed.add_field(
                 name="Next Episode",
-                value="The date of the next episode is not currently known",
+                value=f"The date of the next episode is not currently known ({format_time(date=f"{year}-{month}-{day}")})",
                 inline=True,
             )
 
