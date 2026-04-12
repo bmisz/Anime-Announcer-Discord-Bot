@@ -50,7 +50,7 @@ class AnimeAnnouncerCommands(commands.Cog):
         if anime["nextAiringEpisode"] is not None:
             next_ep = f"Next episode is on: {format_time(unix_epoch_time=anime["nextAiringEpisode"]["airingAt"])}"
             embed.add_field(name="Next Episode", value=next_ep, inline=True)
-        elif anime["nextAiringEpisode"] is None and anime["status"] != "FINISHED":
+        elif anime["nextAiringEpisode"] is None and anime["status"] == "FINISHED":
             embed.add_field(
                 name="Concluded", value="This anime has concluded", inline=True
             )
