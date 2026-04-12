@@ -61,7 +61,7 @@ class AnimeAnnouncerCommands(commands.Cog):
 
             embed.add_field(
                 name="Next Episode",
-                value=f"The date of the next episode is not currently known ({format_time(date=f"{year}-{month}-{day}")})",
+                value=f"Exact date of next episode isn't currently known ({format_time(date=f"{year}-{month}-{day}")})",
                 inline=True,
             )
 
