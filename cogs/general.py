@@ -1,4 +1,3 @@
-import discord
 from discord.ext import commands
 
 
@@ -6,7 +5,7 @@ class General(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name="ping")
+    @commands.command()
     async def ping(self, ctx):
         await ctx.send(f"{round(self.bot.latency * 1000)}ms")
 
@@ -20,7 +19,7 @@ class General(commands.Cog):
         await ctx.send("Shutting down...")
         await self.bot.close()
 
-    @commands.command(name="echo")
+    @commands.command()
     async def echo(self, ctx, *, message: str):
         await ctx.send(message)
 
