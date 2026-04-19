@@ -14,7 +14,7 @@ class AnimeAnnouncerCommands(commands.Cog):
         self.url = "https://graphql.anilist.co"
 
     @commands.command(name="info")
-    async def info(self, ctx, anime_id: str = ""):
+    async def info(self, ctx: commands.Context, anime_id: str = ""):
         try:
             anime_id_int = int(anime_id)
         except ValueError:
@@ -150,7 +150,7 @@ class AnimeAnnouncerCommands(commands.Cog):
             await ctx.send(f"Now tracking **{english_title} ({anime_id_int})**")
 
     @commands.command(name="untrack")
-    async def untrack(self, ctx, anime_id: str = ""):
+    async def untrack(self, ctx: commands.Context, anime_id: str = ""):
         try:
             anime_id_int = int(anime_id)
         except ValueError:
@@ -184,7 +184,7 @@ class AnimeAnnouncerCommands(commands.Cog):
         await ctx.send(f"Stopped tracking **{name} ({anime_id_int})**")
 
     @commands.command(name="list")
-    async def list(self, ctx):
+    async def list(self, ctx: commands.Context):
         user_id = ctx.author.id
         cursor = self.bot.connection.cursor()
         cursor.execute(
@@ -205,7 +205,37 @@ class AnimeAnnouncerCommands(commands.Cog):
         final_string = "\n".join(rows_as_strings)
 
         await ctx.send(final_string)
+    
+    @commands.command()
+    async def toggle_reminders(self, ctx: commands.Context, anime_id: str = ""):
+        try:
+            anime_id_int = int(anime_id)
+        except ValueError:
+            await ctx.send("This is not a valid integer ID")
+            return
+        if anime_id == "":
+            await ctx.send("Please enter an ID to stop tracking.")
+            return
+        user_id = ctx.author.id
+        
+        cursor = self.bot.connection.cursor()
+        cursor.execute("SELECT weekly_reminders_toggled FROM tracked_anime WHERE user_id = ? AND anime_id = ?", (user_id, anime_id_int))
+        if cursor.rowcount == 0:
+            await ctx.send(f"You may not be tracking this anime. Try \"!track {anime_id_int}, then try again.")
+            return
+        result = cursor.fetchone()
+        if result:
+            weekly_reminders_toggled = result[0]
+        
+        if weekly_reminders_toggled == 0:
+            cursor.execute("UPDATE tracked_anime SET weekly_reminders_toggled = ? WHERE user_id = ? AND anime_id = ?", (1, user_id, anime_id_int))
+            await ctx.send(f"Turned on weekly updates for anime id {anime_id_int}")
+        else: 
+            cursor.execute("UPDATE tracked_anime SET weekly_reminders_toggled = ? WHERE user_id = ? AND anime_id = ?", (0, user_id, anime_id_int))
+            await ctx.send(f"Turned off weekly updates for anime id {anime_id_int}")
+        self.bot.connection.commit()
+        
 
-
+    
 async def setup(bot):
     await bot.add_cog(AnimeAnnouncerCommands(bot))
