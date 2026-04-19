@@ -166,20 +166,33 @@ class AnimeAnnouncerTasks(commands.Cog):
                 ),
             ]
 
-            for j, (new_val, old_val, db_column, label) in enumerate(changes_to_look_for):
+            for j, (new_val, old_val, db_column, label) in enumerate(
+                changes_to_look_for
+            ):
                 is_checking_airing = j == 2 and changes_to_look_for[1][1] == "RELEASING"
                 new_val_is_new = new_val is not None and new_val != old_val
                 if is_checking_airing and new_val_is_new:
                     # This is an exception for weekly reminders
-                    print(new_val+", "+old_val)
+                    cursor.execute(
+                        "UPDATE animes SET next_episode_airs = ? WHERE id = ?",
+                        (new_val, show["id"]),
+                    )
+                    print(f"{label} changed: {old_val} --> {new_val}.")
+                    
+                    print(new_val + ", " + old_val)
                     print("Weekly reminder conditional entered.")
-                    cursor.execute("SELECT user_id from tracked_anime WHERE anime_id = ? AND weekly_reminders_toggled = ?", (id, 1))
+                    cursor.execute(
+                        "SELECT user_id from tracked_anime WHERE anime_id = ? AND weekly_reminders_toggled = ?",
+                        (id, 1),
+                    )
                     row = cursor.fetchall()
                     uids = [user_ids[0] for user_ids in row]
                     if len(uids) > 0:
-                        await CHANNEL.send(f"🚨AIRING REMINDER🚨\n**{db_english_title}** has aired a new episode.\n{get_mention_string(uids)}")
+                        await CHANNEL.send(
+                            f"🚨AIRING REMINDER🚨\n**{db_english_title}** has aired a new episode.\n{get_mention_string(uids)}"
+                        )
                     continue
-                    
+
                 if new_val is not None and new_val != old_val:
                     cursor.execute(
                         f"UPDATE animes SET {db_column} = ? WHERE id = ?",
