@@ -177,9 +177,9 @@ class AnimeAnnouncerTasks(commands.Cog):
                         "UPDATE animes SET next_episode_airs = ? WHERE id = ?",
                         (new_val, show["id"]),
                     )
+                    self.bot.connection.commit()
                     print(f"{label} changed: {old_val} --> {new_val}.")
                     
-                    print(new_val + ", " + old_val)
                     print("Weekly reminder conditional entered.")
                     cursor.execute(
                         "SELECT user_id from tracked_anime WHERE anime_id = ? AND weekly_reminders_toggled = ?",
@@ -191,6 +191,7 @@ class AnimeAnnouncerTasks(commands.Cog):
                         await CHANNEL.send(
                             f"🚨AIRING REMINDER🚨\n**{db_english_title}** has aired a new episode.\n{get_mention_string(uids)}"
                         )
+                    found_change = True
                     continue
 
                 if new_val is not None and new_val != old_val:
