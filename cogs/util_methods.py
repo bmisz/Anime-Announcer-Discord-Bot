@@ -100,8 +100,10 @@ def get_mention_string(users_who_track: list[int]) -> str:
     prefix = "<@"
     suffix = ">"
     final_string = "\n".join([f"{prefix}{user}{suffix}" for user in users_who_track])
-    return final_string  # This would be horrific UX with more than a couple users but I dont have that problem so sucks to be the person who does :)
+    return final_string
+    # This would be horrible UX. With more than a couple users tracking the same anime it would create a very long list of <@>s
     # I would probably make a custom role for everyone who tracks one anime so you can just @ the role rather than ever user
+    # but im putting this on the backburner for now because this bot is just for me.
 
 
 def load_query(filename: str) -> str:

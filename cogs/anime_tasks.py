@@ -28,7 +28,7 @@ class AnimeAnnouncerTasks(commands.Cog):
             CHANNEL = await self.bot.fetch_channel(self.channel_id)
 
         cursor: sqlite3.Cursor = self.bot.connection.cursor()
-        
+
         cursor.execute("SELECT anime_id, user_id FROM tracked_anime")
         # rows = [(id, uid), (id2, uid2)...]
         rows: list[tuple[int, int]] = cursor.fetchall()
@@ -62,6 +62,8 @@ class AnimeAnnouncerTasks(commands.Cog):
     async def _look_for_changes(
         self, anilist_data, ids: list[tuple[int, list[int]]]
     ) -> bool:
+        WEEKLY_REMINDERS_ENABLED = 1
+        WEEKLY_REMINDERS_DISABLED = 0
         CHANNEL = self.bot.get_channel(self.channel_id)
         if CHANNEL is None:
             CHANNEL = await self.bot.fetch_channel(self.channel_id)
@@ -70,6 +72,7 @@ class AnimeAnnouncerTasks(commands.Cog):
         found_change = False
 
         for i, show in enumerate(anilist_data["data"]["Page"]["media"]):
+            id = show["id"]
             users_who_track = ids[i][1]
             anilist_english_title = show["title"]["english"]
             anilist_status = show["status"]
@@ -93,6 +96,13 @@ class AnimeAnnouncerTasks(commands.Cog):
 
             db_status, db_next_airing_episode, db_startDate, db_english_title = row
 
+            if anilist_english_title != db_english_title:
+                cursor.execute(
+                    "UPDATE animes SET title_english = ? WHERE id = ?",
+                    (anilist_english_title, id),
+                )
+                found_change = True
+
             # If anime concludes
             if anilist_status != db_status and anilist_status == "FINISHED":
                 found_change = True
@@ -103,7 +113,7 @@ class AnimeAnnouncerTasks(commands.Cog):
                 cursor.execute("DELETE FROM animes WHERE id = ?", (show["id"],))
 
                 print(f"Removing {show['id']} from database due to show concluding.")
-                self.bot.connection.commit()
+                found_change = True
                 mention_string = get_mention_string(users_who_track)
                 await CHANNEL.send(
                     f"❌ **{db_english_title}** has concluded and has been removed from your tracking list. ❌\n{mention_string}"
@@ -118,12 +128,14 @@ class AnimeAnnouncerTasks(commands.Cog):
                     (anilist_status, show["id"]),
                 )
                 print(
-                    f"Changing database status: {db_status} -> {anilist_status}. ({show['id']})"
+                    f"Changing database status: {db_status} -> {anilist_status}. ({id})"
                 )
-                self.bot.connection.commit()
+                found_change = True
                 db_status = "RELEASING"
                 mention_string = get_mention_string(users_who_track)
-                await CHANNEL.send(f"🚨 **{db_english_title}** has started airing! 🚨\n{mention_string}")
+                await CHANNEL.send(
+                    f"🚨 **{db_english_title}** has started airing! 🚨\n{mention_string}"
+                )
                 continue
 
             changes_to_look_for = [
@@ -154,7 +166,18 @@ class AnimeAnnouncerTasks(commands.Cog):
                 ),
             ]
 
-            for new_val, old_val, db_column, label in changes_to_look_for:
+            for j, (new_val, old_val, db_column, label) in enumerate(changes_to_look_for):
+                is_checking_airing = j == 2 and changes_to_look_for[1][1] == "RELEASING"
+                new_val_is_new = new_val is not None and new_val != old_val
+                if is_checking_airing and new_val_is_new:
+                    # This is an exception for weekly reminders
+                    print("Weekly reminder loop entered.")
+                    cursor.execute("SELECT user_id from tracked_anime WHERE anime_id = ? AND weekly_reminders_toggled = ?", (id, 1))
+                    row = cursor.fetchall()
+                    uids = [user_ids[0] for user_ids in row]
+                    await CHANNEL.send(f"🚨AIRING REMINDER🚨\n**{db_english_title}** has aired a new episode. {get_mention_string(uids)}")
+                    continue
+                    
                 if new_val is not None and new_val != old_val:
                     cursor.execute(
                         f"UPDATE animes SET {db_column} = ? WHERE id = ?",
@@ -170,7 +193,7 @@ class AnimeAnnouncerTasks(commands.Cog):
                         old_val = format_time(date=old_val)
                     user_mention_string = get_mention_string(users_who_track)
                     await CHANNEL.send(
-                        f"⚠️ UPDATE ⚠️: **{db_english_title}**'s {label} has changed. \n**{old_val} ➡️ {new_val}**\n{user_mention_string}"
+                        f"⚠️ UPDATE ⚠️: **{db_english_title}'s ({id})** {label} has changed. \n**{old_val} ➡️ {new_val}**\n{user_mention_string}"
                     )
 
                     found_change = True
@@ -181,7 +204,7 @@ class AnimeAnnouncerTasks(commands.Cog):
         return found_change
 
     @tasks.loop(time=time(hour=21, tzinfo=timezone.utc))
-    async def week_reminder(self):
+    async def reminder(self):
         """
         ts is out of commission for now im not doing this rn
         """
@@ -238,7 +261,7 @@ class AnimeAnnouncerTasks(commands.Cog):
                 with sqlite3.connect(backup_file) as dest:
                     src.backup(dest)
             print(f"Database backup completed!: {backup_file}")
-            
+
         try:
             root = Path(__file__).parent.parent
             dest = (root / "backups").resolve()
@@ -249,14 +272,12 @@ class AnimeAnnouncerTasks(commands.Cog):
         except Exception as e:
             print(f"Backup failed: {e}")
 
-
-    
     @query_anilist.before_loop
     async def before_query_anilist(self):
         print("Waiting until bot is initialized until querying AniList...")
         await self.bot.wait_until_ready()
 
-    @week_reminder.before_loop
+    @reminder.before_loop
     async def before_week_reminder(self):
         print(
             "Waiting until bot is initialized before starting weekly reminders task..."

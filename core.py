@@ -29,8 +29,8 @@ class AnimeAnnouncerBot(commands.Bot):
             if filename.endswith(".py"):
                 await self.load_extension(f"cogs.{filename[:-3]}")
                 extensionLocation = filename.index(".")
-                cogName = filename[:extensionLocation]
-                print(f"Successfully loaded {cogName} cog.")
+                cog_name = filename[:extensionLocation]
+                print(f"Successfully loaded {cog_name} cog.")
         self.cursor.executescript(
             # CREATE TABLE IF NOT EXISTS users {    This table is Unnecessary at the moment.
             #     user_id INTEGER PRIMARY KEY,

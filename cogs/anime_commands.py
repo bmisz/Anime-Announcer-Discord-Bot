@@ -11,6 +11,7 @@ from core import AnimeAnnouncerBot
 class AnimeAnnouncerCommands(commands.Cog):
     def __init__(self, bot: AnimeAnnouncerBot):
         self.bot = bot
+        self.url = "https://graphql.anilist.co"
 
     @commands.command(name="info")
     async def info(self, ctx, anime_id: str = ""):
@@ -24,9 +25,9 @@ class AnimeAnnouncerCommands(commands.Cog):
             return
         query = load_query("info.graphql")
         variables = {"id": anime_id_int}
-        url = "https://graphql.anilist.co"
 
-        response = requests.post(url, json={"query": query, "variables": variables})
+
+        response = requests.post(self.url, json={"query": query, "variables": variables})
         data = response.json()
 
         if data["data"]["Media"] is None:
@@ -84,9 +85,8 @@ class AnimeAnnouncerCommands(commands.Cog):
             query = load_query("track.graphql")
 
             variables = {"id": anime_id_int}
-            url = "https://graphql.anilist.co"
 
-            response = requests.post(url, json={"query": query, "variables": variables})
+            response = requests.post(self.url, json={"query": query, "variables": variables})
             data = response.json()
             anime = data["data"]["Media"]
 
