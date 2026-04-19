@@ -171,7 +171,8 @@ class AnimeAnnouncerTasks(commands.Cog):
                 new_val_is_new = new_val is not None and new_val != old_val
                 if is_checking_airing and new_val_is_new:
                     # This is an exception for weekly reminders
-                    print("Weekly reminder loop entered.")
+                    print(new_val+", "+old_val)
+                    print("Weekly reminder conditional entered.")
                     cursor.execute("SELECT user_id from tracked_anime WHERE anime_id = ? AND weekly_reminders_toggled = ?", (id, 1))
                     row = cursor.fetchall()
                     uids = [user_ids[0] for user_ids in row]
