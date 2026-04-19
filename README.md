@@ -21,4 +21,5 @@ I use a systemd service on my old laptop that I converted to a server to run the
 `!track {id}` (Adds show to database and begins querying the API to check for updates.)\
 `!untrack {id}`\
 `!shutdown`\
-`!ping`
+`!ping`\
+`!toggle_reminders` (Toggles reminders for a currently releasing show for the user)
