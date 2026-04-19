@@ -175,7 +175,8 @@ class AnimeAnnouncerTasks(commands.Cog):
                     cursor.execute("SELECT user_id from tracked_anime WHERE anime_id = ? AND weekly_reminders_toggled = ?", (id, 1))
                     row = cursor.fetchall()
                     uids = [user_ids[0] for user_ids in row]
-                    await CHANNEL.send(f"🚨AIRING REMINDER🚨\n**{db_english_title}** has aired a new episode. {get_mention_string(uids)}")
+                    if len(uids) > 0:
+                        await CHANNEL.send(f"🚨AIRING REMINDER🚨\n**{db_english_title}** has aired a new episode.\n{get_mention_string(uids)}")
                     continue
                     
                 if new_val is not None and new_val != old_val:
