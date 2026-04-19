@@ -183,7 +183,7 @@ class AnimeAnnouncerTasks(commands.Cog):
                     print("Weekly reminder conditional entered.")
                     cursor.execute(
                         "SELECT user_id from tracked_anime WHERE anime_id = ? AND weekly_reminders_toggled = ?",
-                        (id, 1),
+                        (id, WEEKLY_REMINDERS_ENABLED),
                     )
                     row = cursor.fetchall()
                     uids = [user_ids[0] for user_ids in row]
