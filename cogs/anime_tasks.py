@@ -96,13 +96,6 @@ class AnimeAnnouncerTasks(commands.Cog):
 
             db_status, db_next_airing_episode, db_startDate, db_english_title = row
 
-            if anilist_english_title != db_english_title:
-                cursor.execute(
-                    "UPDATE animes SET title_english = ? WHERE id = ?",
-                    (anilist_english_title, id),
-                )
-                found_change = True
-
             # If anime concludes
             if anilist_status != db_status and anilist_status == "FINISHED":
                 found_change = True
@@ -179,7 +172,7 @@ class AnimeAnnouncerTasks(commands.Cog):
                     )
                     self.bot.connection.commit()
                     print(f"{label} changed: {old_val} --> {new_val}.")
-                    
+
                     print("Weekly reminder conditional entered.")
                     cursor.execute(
                         "SELECT user_id from tracked_anime WHERE anime_id = ? AND weekly_reminders_toggled = ?",
