@@ -20,6 +20,7 @@ class AnimeAnnouncerCommands(commands.Cog):
         except ValueError:
             await ctx.send("This is not a valid integer ID")
             return
+    
         if anime_id == "":
             await ctx.send("Please enter an ID you track to get info on it")
             return

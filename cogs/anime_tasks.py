@@ -212,51 +212,6 @@ class AnimeAnnouncerTasks(commands.Cog):
 
         return found_change
 
-    @tasks.loop(time=time(hour=21, tzinfo=timezone.utc))
-    async def reminder(self):
-        """
-        ts is out of commission for now im not doing this rn
-        """
-        # CHANNEL = self.bot.get_channel(self.channel_id)
-        # if CHANNEL is None:
-        #     CHANNEL = await self.bot.fetch_channel(self.channel_id)
-
-        # # One week in seconds
-        # ONE_WEEK = 60 * 60 * 24 * 7
-
-        # NOW = int(datetime.now(timezone.utc).timestamp())
-
-        # cursor = self.bot.connection.cursor()
-        # cursor.execute(
-        #     "SELECT a.id, a.title_english, a.next_episode_airs, weekly_reminder_sent FROM tracked_anime"
-        # )
-
-        # rows = cursor.fetchall()
-
-        # if not rows:
-        #     print("Not tracking any anime yet, skipping checking for weekly reminder.")
-        #     return
-
-        # for id, english_title, next_episode_airs, weekly_reminder_already_sent in rows:
-        #     weekly_reminder_already_sent = bool(weekly_reminder_already_sent)
-        #     if weekly_reminder_already_sent == True:
-        #         print(f"{english_title} has already had a 1 week reminder sent.")
-        #         continue
-        #     if next_episode_airs == None:
-        #         print(f"{english_title} has no scheduled next episode yet.")
-        #         continue
-
-        #     time_to_next_ep = next_episode_airs - NOW
-        #     if 0 < time_to_next_ep <= ONE_WEEK:
-        #         cursor.execute(
-        #             "UPDATE tracked_anime SET weekly_reminder_sent = 1 WHERE anilist_id = ?",
-        #             (id,),
-        #         )
-        #         self.bot.connection.commit()
-        #         await CHANNEL.send(
-        #             f"🔔 **{english_title}** is less than one week from airing it's first episode! 🔔"
-        #         )
-
     @tasks.loop(hours=72)
     async def database_backup(self):
         if not os.path.exists("backups"):
