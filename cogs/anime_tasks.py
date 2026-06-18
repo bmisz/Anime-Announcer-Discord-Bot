@@ -241,13 +241,6 @@ class AnimeAnnouncerTasks(commands.Cog):
         print("Waiting until bot is initialized until querying AniList...")
         await self.bot.wait_until_ready()
 
-    @reminder.before_loop
-    async def before_week_reminder(self):
-        print(
-            "Waiting until bot is initialized before starting weekly reminders task..."
-        )
-        await self.bot.wait_until_ready()
-
     @database_backup.before_loop
     async def before_database_backup(self):
         print(
