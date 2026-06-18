@@ -1,4 +1,4 @@
-query ($id: Int, $search, String) {
+query ($id: Int, $search: String) {
 	Media(id: $id, search: $search, type: ANIME) {
 		coverImage {
 			large

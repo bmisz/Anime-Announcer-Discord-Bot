@@ -1,0 +1,5 @@
+query ($search: String) {
+	Media(search: $search, type: ANIME) {
+		id
+	}
+}

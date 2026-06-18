@@ -120,3 +120,21 @@ def load_query(filename: str) -> str:
     BASE_DIR = Path(__file__).resolve().parent
     TARGET_FILE = BASE_DIR / "graphql" / filename
     return TARGET_FILE.read_text()
+
+def check_response_for_errors(data) -> str | None:
+    """
+    Checks a GraphQL query for errors.
+
+    Args:
+        data: The data recieved from anilist query.
+
+    Returns:
+        response (str | None): The response if (not) error.
+    """
+    if "errors" in data:
+        status = data["errors"][0]["status"]
+        if status == 404:
+            return "Show not found. (Try checking your spelling)"
+        else:
+            return f"Error {status} encountered"
+    return None

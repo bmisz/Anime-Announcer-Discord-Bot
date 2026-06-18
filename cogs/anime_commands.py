@@ -4,7 +4,12 @@ import discord
 from strip_markdown import strip_markdown
 from discord.ext import commands
 from langdetect import detect
-from .util_methods import format_time, determine_english_title, load_query
+from .util_methods import (
+    format_time,
+    determine_english_title,
+    load_query,
+    check_response_for_errors,
+)
 from core import AnimeAnnouncerBot
 
 
@@ -14,22 +19,28 @@ class AnimeAnnouncerCommands(commands.Cog):
         self.url = "https://graphql.anilist.co"
 
     @commands.command(name="info")
-    async def info(self, ctx: commands.Context, anime_id: str = ""):
-        try:
-            anime_id_int = int(anime_id)
-        except ValueError:
-            await ctx.send("This is not a valid integer ID")
-            return
-    
+    async def info(self, ctx: commands.Context, *anime_id):
+        anime_id = ", ".join(anime_id)
         if anime_id == "":
             await ctx.send("Please enter an ID you track to get info on it")
             return
         query = load_query("info.graphql")
-        variables = {"id": anime_id_int}
+        try:
+            anime_id_int = int(anime_id)
+        except ValueError:
+            variables = {"search": anime_id}
+        else:
+            variables = {"id": anime_id_int}
 
-
-        response = requests.post(self.url, json={"query": query, "variables": variables})
+        response = requests.post(
+            self.url, json={"query": query, "variables": variables}
+        )
         data = response.json()
+        error_response = check_response_for_errors(data)
+
+        if error_response != None:
+            await ctx.send(error_response)
+            return
 
         if data["data"]["Media"] is None:
             print("'data[data][Media]' returned None in info command.")
@@ -73,90 +84,112 @@ class AnimeAnnouncerCommands(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name="track")
-    async def track(self, ctx: commands.Context, anime_id: str = ""):
+    async def track(self, ctx: commands.Context, *anime_id):
+        anime_id = ", ".join(anime_id)
         try:
             anime_id_int = int(anime_id)
         except ValueError:
-            await ctx.send("This is not a valid integer ID")
-            return
+            variables = {"search": anime_id}
+        else:
+            variables = {"id": anime_id_int}
         if anime_id == "":
             await ctx.send("Please enter an ID to start tracking.")
+            return
+
+        user_id = ctx.author.id
+        query = load_query("track.graphql")
+
+        response = requests.post(
+            self.url, json={"query": query, "variables": variables}
+        )
+        data = response.json()
+        error_response = check_response_for_errors(data)
+
+        if error_response != None:
+            await ctx.send(error_response)
+            return
+
+        anime = data["data"]["Media"]
+
+        if anime["status"] == "FINISHED":
+            await ctx.send(
+                "Show is finished and therefore has no reason to be tracked. Not added. "
+            )
+            return
+
+        start_date = f"{anime["startDate"]["year"]}-{anime["startDate"]["month"]}-{anime["startDate"]["day"]}"
+
+        next_ep = (
+            anime["nextAiringEpisode"]["airingAt"]
+            if anime["nextAiringEpisode"]
+            else None
+        )
+
+        cursor = self.bot.connection.cursor()
+
+        anime_id_int = anime["id"]
+        cursor.execute(
+            "SELECT 1 FROM tracked_anime WHERE user_id = ? AND anime_id = ?",
+            (user_id, anime_id_int),
+        )
+        if cursor.fetchone():
+            await ctx.send("You've already started tracking this show.")
+            return
+
+        if anime["title"]["english"] is None:
+            english_title = determine_english_title(anime["synonyms"])
+            if english_title is None:
+                english_title = anime["title"]["romaji"]
         else:
-            user_id = ctx.author.id
-            query = load_query("track.graphql")
+            english_title = anime["title"]["english"]
 
-            variables = {"id": anime_id_int}
+        cursor.execute(
+            """
+            INSERT OR IGNORE INTO animes 
+            (id, title_english, title_romaji, next_episode_airs, start_date, status)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                anime["id"],
+                english_title,
+                anime["title"]["romaji"],
+                next_ep,
+                start_date,
+                anime["status"],
+            ),
+        )
+        cursor.execute(
+            """
+            INSERT INTO tracked_anime
+            (anime_id, user_id, anime_nickname, weekly_reminders_toggled)
+            VALUES (?, ?, ?, ?)
+            """,
+            (anime_id_int, user_id, None, 0),
+        )
 
-            response = requests.post(self.url, json={"query": query, "variables": variables})
-            data = response.json()
-            anime = data["data"]["Media"]
+        self.bot.connection.commit()
 
-            if anime["status"] == "FINISHED":
-                await ctx.send(
-                    "Show is finished and therefore has no reason to be tracked. Not added. "
-                )
-                return
-
-            start_date = f"{anime["startDate"]["year"]}-{anime["startDate"]["month"]}-{anime["startDate"]["day"]}"
-
-            next_ep = (
-                anime["nextAiringEpisode"]["airingAt"]
-                if anime["nextAiringEpisode"]
-                else None
-            )
-
-            cursor = self.bot.connection.cursor()
-
-            cursor.execute(
-                "SELECT 1 FROM tracked_anime WHERE user_id = ? AND anime_id = ?",
-                (user_id, anime_id_int),
-            )
-            if cursor.fetchone():
-                await ctx.send("You've already started tracking this show.")
-                return
-
-            if anime["title"]["english"] is None:
-                english_title = determine_english_title(anime["synonyms"])
-                if english_title is None:
-                    english_title = anime["title"]["romaji"]
-            else:
-                english_title = anime["title"]["english"]
-
-            cursor.execute(
-                """
-                INSERT OR IGNORE INTO animes 
-                (id, title_english, title_romaji, next_episode_airs, start_date, status)
-                VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    anime["id"],
-                    english_title,
-                    anime["title"]["romaji"],
-                    next_ep,
-                    start_date,
-                    anime["status"],
-                ),
-            )
-            cursor.execute(
-                """
-                INSERT INTO tracked_anime
-                (anime_id, user_id, anime_nickname, weekly_reminders_toggled)
-                VALUES (?, ?, ?, ?)
-                """,
-                (anime_id_int, user_id, None, 0),
-            )
-
-            self.bot.connection.commit()
-
-            await ctx.send(f"Now tracking **{english_title} ({anime_id_int})**")
+        await ctx.send(f"Now tracking **{english_title} ({anime_id_int})**")
 
     @commands.command(name="untrack")
-    async def untrack(self, ctx: commands.Context, anime_id: str = ""):
+    async def untrack(self, ctx: commands.Context, *anime_id):
+        anime_id = ", ".join(anime_id)
         try:
             anime_id_int = int(anime_id)
         except ValueError:
-            await ctx.send("This is not a valid integer ID")
-            return
+            variables = {"search": anime_id}
+            query = load_query("untrack.graphql")
+
+            response = requests.post(
+                self.url, json={"query": query, "variables": variables}
+            )
+            data = response.json()
+            error_response = check_response_for_errors(data)
+
+            if error_response is not None:
+                await ctx.send(error_response)
+                return
+            anime_id_int = data["data"]["Media"]["id"]
         if anime_id == "":
             await ctx.send("Please enter an ID to stop tracking.")
             return
@@ -167,7 +200,10 @@ class AnimeAnnouncerCommands(commands.Cog):
             "SELECT title_english FROM animes WHERE id = ?",
             (anime_id_int,),
         )
-        name = cursor.fetchone()[0]
+        row = cursor.fetchone()
+        if row is None:
+            await ctx.send("You were not tracking this anime (If you are, try specifying the season).")
+        name = row[0]
 
         cursor.execute(
             "DELETE FROM tracked_anime WHERE anime_id = ? AND user_id = ?",
@@ -206,37 +242,58 @@ class AnimeAnnouncerCommands(commands.Cog):
         final_string = "\n".join(rows_as_strings)
 
         await ctx.send(final_string)
-    
+
     @commands.command()
-    async def toggle_reminders(self, ctx: commands.Context, anime_id: str = ""):
+    async def toggle_reminders(self, ctx: commands.Context, *anime_id):
+        anime_id = ", ".join(anime_id)
         try:
             anime_id_int = int(anime_id)
         except ValueError:
-            await ctx.send("This is not a valid integer ID")
-            return
+            variables = {"search": anime_id}
+            query = load_query("untrack.graphql")
+
+            response = requests.post(
+                self.url, json={"query": query, "variables": variables}
+            )
+            data = response.json()
+            error_response = check_response_for_errors(data)
+
+            if error_response is not None:
+                await ctx.send(error_response)
+                return
+            anime_id_int = data["data"]["Media"]["id"]
         if anime_id == "":
             await ctx.send("Please enter an ID to stop tracking.")
             return
         user_id = ctx.author.id
-        
+
         cursor = self.bot.connection.cursor()
-        cursor.execute("SELECT weekly_reminders_toggled FROM tracked_anime WHERE user_id = ? AND anime_id = ?", (user_id, anime_id_int))
-        if cursor.rowcount == 0:
-            await ctx.send(f"You may not be tracking this anime. Try \"!track {anime_id_int}, then try again.")
-            return
+        cursor.execute(
+            "SELECT weekly_reminders_toggled FROM tracked_anime WHERE user_id = ? AND anime_id = ?",
+            (user_id, anime_id_int),
+        )
         result = cursor.fetchone()
+        if result is None:
+             await ctx.send(
+                f'You may not be tracking this anime. Try "!track {anime_id_int}", then try again.'
+            )
         if result:
             weekly_reminders_toggled = result[0]
-        
+
         if weekly_reminders_toggled == 0:
-            cursor.execute("UPDATE tracked_anime SET weekly_reminders_toggled = ? WHERE user_id = ? AND anime_id = ?", (1, user_id, anime_id_int))
+            cursor.execute(
+                "UPDATE tracked_anime SET weekly_reminders_toggled = ? WHERE user_id = ? AND anime_id = ?",
+                (1, user_id, anime_id_int),
+            )
             await ctx.send(f"Turned on weekly updates for anime id {anime_id_int}")
-        else: 
-            cursor.execute("UPDATE tracked_anime SET weekly_reminders_toggled = ? WHERE user_id = ? AND anime_id = ?", (0, user_id, anime_id_int))
+        else:
+            cursor.execute(
+                "UPDATE tracked_anime SET weekly_reminders_toggled = ? WHERE user_id = ? AND anime_id = ?",
+                (0, user_id, anime_id_int),
+            )
             await ctx.send(f"Turned off weekly updates for anime id {anime_id_int}")
         self.bot.connection.commit()
-        
 
-    
+
 async def setup(bot):
     await bot.add_cog(AnimeAnnouncerCommands(bot))
