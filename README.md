@@ -6,7 +6,8 @@ It uses the AniList API to track changes in the AniList database and notify the 
 
 It'll notify you when a release date changes, a new episode airs, or when a season finishes. Also has neat info panels for any anime.
 
-## Example
+## Examples
+<img width="783" height="629" alt="Screenshot_2026-10-11-222240" src="https://github.com/user-attachments/assets/14f88a49-48c4-4da2-ae55-3d6fa280c83e" />
 
 ![image](https://github.com/user-attachments/assets/466e1835-5609-4582-a6a1-7ed5f5df431c)
 
@@ -36,3 +37,5 @@ I use a systemd service on my old laptop that I converted to a server to run the
 `!shutdown`\
 `!ping`\
 `!toggle_reminders {id | name}` (Toggles reminders for a currently releasing show for the user)
+
+<sub>Can you tell I like Vinland Saga?</sub>
