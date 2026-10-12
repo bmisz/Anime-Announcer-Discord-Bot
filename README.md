@@ -13,7 +13,13 @@ It'll notify you when a release date changes, a new episode airs, or when a seas
 
 ## Usage
 Navigate to the [Discord Developer Portal](https://discord.com/developers/home) and create an application. Follow the instructions and once completed: Navigate to the 'Bot' section to copy your token and paste it into your `.env`(only use .env if not using docker and using systemd. Otherwise just put token in docker-compose.yml) file in the directory you cloned the repository to. (Example in `.env.example`)
-### Docker Compose!
+### Docker Compose
+1. Navigate to the [Discord Developer Portal](https://discord.com/developers/home) and create an application.
+2. Follow the instructions and once completed: Navigate to the 'Bot' section to copy your token
+3. Paste the token in your docker-compose.yml
+4. Find the channel ID of the channel you want the bot to make announcements in.
+5. Paste it in your docker-compose.yml
+6. docker compose up -d
 ```yaml
 services:
   anime-announcer:
@@ -24,10 +30,27 @@ services:
       DISCORD_TOKEN: "paste_your_bot_token_here"
       ANNOUNCEMENT_CHANNEL_ID: "123456789012345678"
 ```
-`DISCORD_TOKEN` is from your dev portal and `ANNOUNCEMENT_CHANNEL_ID` you get from your discord server of choice where you want announcments.
+### Systemd
+1. Wherever you would like, clone this repository.
+2. Create an animebot.service file (mines in /etc/systemd/system/animebot.service)
+3. Paste in the file below, or create your own
+4. Fill in `User and ExecStart` fields with necessary info.
+```toml
+[Unit]
+Description=Discord Anime Bot
+After=network-online.target
+Wants=online.target
 
-I use a systemd service on my old laptop that I converted to a server to run the bot, as it ideally should be running 24/7 to check for changes at all times. I would suggest this way but if you have other ways you would like to run it you just need to execute the main.py file at some point and let it run.
+[Service]
+User=yourUser
+WorkingDirectory=/path/to/Anime-Announcer-Discord-Bot/
+ExecStart=/path/to/your/python -u /path/to/where/you/cloned/the/repo/main.py
+Restart=always
+RestartSec=5
 
+[Install]
+WantedBy=multi-user.target
+```
 ### Commands
 
 `!info {id | name}` (Gives current info known about show)\
@@ -35,7 +58,7 @@ I use a systemd service on my old laptop that I converted to a server to run the
 `!track {id | name}` (Adds show to database and begins querying the API to check for updates.)\
 `!untrack {id | name}`\
 `!shutdown`\
-`!ping`\
+`!ping` (returns your current ping in ms)\
 `!toggle_reminders {id | name}` (Toggles reminders for a currently releasing show for the user)
 
 <sub>Can you tell I like Vinland Saga?</sub>
