@@ -1,0 +1,8 @@
+services:
+  anime-announcer:
+    image: bmiz/anime-announcer-discord-bot:latest
+    container_name: anime-announcer-discord-bot
+    restart: unless-stopped
+    environment:
+      DISCORD_TOKEN: "paste_your_bot_token_here"
+      ANNOUNCEMENT_CHANNEL_ID: "123456789012345678"

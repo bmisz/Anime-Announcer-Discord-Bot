@@ -104,6 +104,7 @@ def get_mention_string(users_who_track: list[int]) -> str:
     # This would be horrible UX. With more than a couple users tracking the same anime it would create a very long list of <@>s
     # I would probably make a custom role for everyone who tracks one anime so you can just @ the role rather than ever user
     # but im putting this on the backburner for now because this bot is just for me.
+    # Please contribute to this make a pr I will merge it.
 
 
 def load_query(filename: str) -> str:

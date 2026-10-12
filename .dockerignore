@@ -1,0 +1,13 @@
+.env
+testing/
+anime_bot.db
+todo.md
+backups/
+__pycache__/
+venv/
+.vscode/
+docker-compose.local.yml
+README.md
+CONTRIBUTING.md
+LICENSE
+.git

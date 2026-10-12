@@ -4,22 +4,35 @@ A Discord bot to track upcoming anime you and your server are interested in.
 
 It uses the AniList API to track changes in the AniList database and notify the people who track of such changes.
 
+It'll notify you when a release date changes, a new episode airs, or when a season finishes. Also has neat info panels for any anime.
+
 ## Example
 
 ![image](https://github.com/user-attachments/assets/466e1835-5609-4582-a6a1-7ed5f5df431c)
 
 ## Usage
-
-Navigate to the [Discord Developer Portal](https://discord.com/developers/home) and create an application. Follow the instructions and once completed: Navigate to the 'Bot' section to copy your token and paste it into your `.env` file in the directory you cloned the repository to. (Example in `.env.example`)
+Navigate to the [Discord Developer Portal](https://discord.com/developers/home) and create an application. Follow the instructions and once completed: Navigate to the 'Bot' section to copy your token and paste it into your `.env`(only use .env if not using docker and using systemd. Otherwise just put token in docker-compose.yml) file in the directory you cloned the repository to. (Example in `.env.example`)
+### Docker Compose!
+```yaml
+services:
+  anime-announcer:
+    image: bmiz/anime-announcer-discord-bot:latest
+    container_name: anime-announcer-discord-bot
+    restart: unless-stopped
+    environment:
+      DISCORD_TOKEN: "paste_your_bot_token_here"
+      ANNOUNCEMENT_CHANNEL_ID: "123456789012345678"
+```
+`DISCORD_TOKEN` is from your dev portal and `ANNOUNCEMENT_CHANNEL_ID` you get from your discord server of choice where you want announcments.
 
 I use a systemd service on my old laptop that I converted to a server to run the bot, as it ideally should be running 24/7 to check for changes at all times. I would suggest this way but if you have other ways you would like to run it you just need to execute the main.py file at some point and let it run.
 
 ### Commands
 
-`!info {id}` (Gives current info known about show)\
+`!info {id | name}` (Gives current info known about show)\
 `!list` (Lists shows the user who sent the command is currently tracking.)\
-`!track {id}` (Adds show to database and begins querying the API to check for updates.)\
-`!untrack {id}`\
+`!track {id | name}` (Adds show to database and begins querying the API to check for updates.)\
+`!untrack {id | name}`\
 `!shutdown`\
 `!ping`\
-`!toggle_reminders` (Toggles reminders for a currently releasing show for the user)
+`!toggle_reminders {id | name}` (Toggles reminders for a currently releasing show for the user)
