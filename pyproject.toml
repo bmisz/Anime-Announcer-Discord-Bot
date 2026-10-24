@@ -1,0 +1,11 @@
+[project]
+name = "anime-announcer-discord-bot"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "discord-py==2.7.1",
+    "langdetect==1.0.9",
+    "python-dotenv==1.2.2",
+    "requests==2.32.5",
+    "strip-markdown==1.3",
+]
