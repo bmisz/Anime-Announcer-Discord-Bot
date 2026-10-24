@@ -35,7 +35,7 @@ services:
 2. Create an animebot.service file (mines in /etc/systemd/system/animebot.service)
 3. Paste in the file below, or create your own
 4. Fill in `User and ExecStart` fields with necessary info.
-```toml
+```ini
 [Unit]
 Description=Discord Anime Bot
 After=network-online.target
