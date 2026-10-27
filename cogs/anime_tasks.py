@@ -11,7 +11,7 @@ from .util_methods import format_time, filter_ids, get_mention_string, load_quer
 load_dotenv()
 
 
-class AnimeAnnouncerAnimeTasks(commands.Cog):
+class Tasks(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.channel_id = os.getenv("ANNOUNCEMENT_CHANNEL_ID")
@@ -21,7 +21,7 @@ class AnimeAnnouncerAnimeTasks(commands.Cog):
         # self.week_reminder.start()
         self.database_backup.start()
 
-    def _get_anime_ids(self):
+    def _get_anime_ids(self) -> list[int]:
 
         cursor: sqlite3.Cursor = self.bot.connection.cursor()
 
@@ -39,7 +39,7 @@ class AnimeAnnouncerAnimeTasks(commands.Cog):
 
         return anime_ids
 
-    def _get_manga_ids(self):
+    def _get_manga_ids(self) -> list[int]:
 
         cursor: sqlite3.Cursor = self.bot.connection.cursor()
 
@@ -65,9 +65,11 @@ class AnimeAnnouncerAnimeTasks(commands.Cog):
 
         query = load_query("update_checker.graphql")
 
+        anime_ids = self._get_anime_ids()
+        manga_ids = self._get_manga_ids()
         variables = {
-            "anime_ids": self._get_anime_ids(),
-            "manga_ids": self._get_manga_ids(),
+            "anime_ids": anime_ids,
+            "manga_ids": manga_ids,
         }
         url = "https://graphql.anilist.co"
 
@@ -79,32 +81,158 @@ class AnimeAnnouncerAnimeTasks(commands.Cog):
             return
         data = response.json()
 
-        changes = await self._look_for_changes(data, ids)
+        changes = await self._look_for_changes(data, anime_ids, manga_ids)
 
         if changes == False:
-            print(f"Searched through {len(ids)} shows and found no changes.")
+            print(f"Searched through {len(anime_ids)} shows and found no changes.")
 
-    async def _look_for_changes(
-        self, anilist_data, ids: list[tuple[int, list[int]]]
-    ) -> bool:
-        WEEKLY_REMINDERS_ENABLED = 1
-        WEEKLY_REMINDERS_DISABLED = 0
-        CHANNEL = self.bot.get_channel(self.channel_id)
-        if CHANNEL is None:
-            CHANNEL = await self.bot.fetch_channel(self.channel_id)
-        cursor = self.bot.connection.cursor()
+    async def _manga_changes(self, anilist_data, manga_ids, cursor, CHANNEL) -> bool:
+        for i, manga in enumerate(anilist_data["data"]["Page"]["manga"]):
+            id = manga["id"]
+            users_who_track = manga_ids[i][1]
+            anilist_english_title = manga["title"]["english"]
+            anilist_status = manga["status"]
+            startDate = manga["startDate"]
+            anilist_chapters = manga["chapters"] if manga["chapters"] else None
+            anilist_startDate = (
+                f"{startDate['year']}-{startDate['month']}-{startDate['day']}"
+            )
 
-        found_change = False
+            cursor.execute(
+                "SELECT status, chapters, start_date, title_english FROM mangas WHERE id = ?",
+                (manga["id"],),
+            )
+            row = cursor.fetchone()
+            if not row:
+                continue
 
-        for i, show in enumerate(anilist_data["data"]["Page"]["anime"]):
-            id = show["id"]
-            users_who_track = ids[i][1]
-            anilist_english_title = show["title"]["english"]
-            anilist_status = show["status"]
-            startDate = show["startDate"]
+            db_status, db_chapters, db_startDate, db_english_title = row
+
+            # If anime concludes
+            if anilist_status != db_status and anilist_status == "FINISHED":
+                found_change = True
+
+                cursor.execute(
+                    "DELETE FROM tracked_manga WHERE anime_id = ?", (manga["id"],)
+                )
+                cursor.execute("DELETE FROM mangas WHERE id = ?", (manga["id"],))
+
+                print(
+                    f"Removing {manga['id']} from tracking database due to the manga concluding."
+                )
+                found_change = True
+                mention_string = get_mention_string(users_who_track)
+                await CHANNEL.send(
+                    f"❌ **{db_english_title}** has concluded and has been removed from your tracking list. ❌\n{mention_string}"
+                )
+                continue
+
+            # If manga starts releasing
+            if anilist_status == "RELEASING" and db_status == "NOT_YET_RELEASED":
+                found_change = True
+                cursor.execute(
+                    "UPDATE mangas SET status = ? WHERE id = ?",
+                    (anilist_status, manga["id"]),
+                )
+                print(
+                    f"Changing database status: {db_status} -> {anilist_status}. ({id})"
+                )
+                found_change = True
+                db_status = "RELEASING"
+                mention_string = get_mention_string(users_who_track)
+                await CHANNEL.send(
+                    f"🚨 **{db_english_title}** has started releasing! 🚨\n{mention_string}"
+                )
+                continue
+
+            changes_to_look_for = [
+                # anilist_info, db_info, db_column name, display_name
+                (
+                    anilist_english_title,
+                    db_english_title,
+                    "title_english",
+                    "english title",
+                ),
+                (
+                    anilist_status,
+                    db_status,
+                    "status",
+                    "status",
+                ),
+                (
+                    anilist_chapters,
+                    db_chapters,
+                    "chapters",
+                    "Number of chapters",
+                ),
+                (
+                    anilist_startDate,
+                    db_startDate,
+                    "start_date",
+                    "start date",
+                ),
+            ]
+
+            for j, (new_val, old_val, db_column, label) in enumerate(
+                changes_to_look_for
+            ):
+                is_checking_status = j == 2 and changes_to_look_for[1][1] == "RELEASING"
+                new_val_is_new = new_val is not None and new_val != old_val
+                if is_checking_status == True and new_val_is_new == True:
+                    # This is an exception for weekly reminders
+                    cursor.execute(
+                        "UPDATE mangas SET chapters = ? WHERE id = ?",
+                        (new_val, manga["id"]),
+                    )
+                    self.bot.connection.commit()
+                    print(f"{label} changed: {old_val} --> {new_val}.")
+
+                    print("Weekly reminder conditional entered.")
+                    cursor.execute(
+                        "SELECT user_id from tracked_manga WHERE manga_id = ? AND reminders_toggled = ?",
+                        (id, 1),
+                    )
+                    row = cursor.fetchall()
+                    uids = [user_ids[0] for user_ids in row]
+                    if len(uids) > 0:
+                        await CHANNEL.send(
+                            f"🚨RELEASE REMINDER🚨\n**{db_english_title}** has released a new chapter.\n{get_mention_string(uids)}"
+                        )
+                    found_change = True
+                    continue
+
+                if new_val is not None and new_val != old_val:
+                    cursor.execute(
+                        f"UPDATE mangas SET {db_column} = ? WHERE id = ?",
+                        (new_val, manga["id"]),
+                    )
+                    print(f"{label} changed: {old_val} --> {new_val}.")
+
+                    if "startDate" in db_column:
+                        new_val = format_time(date=new_val)
+                        old_val = format_time(date=old_val)
+
+                    await CHANNEL.send(
+                        f"⚠️ UPDATE ⚠️: **{db_english_title}'s ({id})** {label} has changed. \n**{old_val} ➡️ {new_val}**\n{get_mention_string(users_who_track)}"
+                    )
+
+                    found_change = True
+
+            if found_change:
+                self.bot.connection.commit()
+
+        return found_change
+
+    async def _anime_changes(self, anilist_data, anime_ids, cursor, CHANNEL) -> bool:
+        for i, anime in enumerate(anilist_data["data"]["Page"]["anime"]):
+            id = anime["id"]
+            users_who_track = anime_ids[i][1]
+            anilist_english_title = anime["title"]["english"]
+            anilist_status = anime["status"]
+            startDate = anime["startDate"]
             anilist_next_airing_episode = (
-                show["nextAiringEpisode"]["airingAt"]
-                if show["nextAiringEpisode"]
+                anime["nextAiringEpisode"]["airingAt"]
+                if anime["nextAiringEpisode"]
                 else None
             )
             anilist_startDate = (
@@ -113,7 +241,7 @@ class AnimeAnnouncerAnimeTasks(commands.Cog):
 
             cursor.execute(
                 "SELECT status, next_episode_airs, start_date, title_english FROM animes WHERE id = ?",
-                (show["id"],),
+                (anime["id"],),
             )
             row = cursor.fetchone()
             if not row:
@@ -126,11 +254,11 @@ class AnimeAnnouncerAnimeTasks(commands.Cog):
                 found_change = True
 
                 cursor.execute(
-                    "DELETE FROM tracked_anime WHERE anime_id = ?", (show["id"],)
+                    "DELETE FROM tracked_anime WHERE anime_id = ?", (anime["id"],)
                 )
-                cursor.execute("DELETE FROM animes WHERE id = ?", (show["id"],))
+                cursor.execute("DELETE FROM animes WHERE id = ?", (anime["id"],))
 
-                print(f"Removing {show['id']} from database due to show concluding.")
+                print(f"Removing {anime['id']} from database due to show concluding.")
                 found_change = True
                 mention_string = get_mention_string(users_who_track)
                 await CHANNEL.send(
@@ -143,7 +271,7 @@ class AnimeAnnouncerAnimeTasks(commands.Cog):
                 found_change = True
                 cursor.execute(
                     "UPDATE animes SET status = ? WHERE id = ?",
-                    (anilist_status, show["id"]),
+                    (anilist_status, anime["id"]),
                 )
                 print(
                     f"Changing database status: {db_status} -> {anilist_status}. ({id})"
@@ -193,7 +321,7 @@ class AnimeAnnouncerAnimeTasks(commands.Cog):
                     # This is an exception for weekly reminders
                     cursor.execute(
                         "UPDATE animes SET next_episode_airs = ? WHERE id = ?",
-                        (new_val, show["id"]),
+                        (new_val, anime["id"]),
                     )
                     self.bot.connection.commit()
                     print(f"{label} changed: {old_val} --> {new_val}.")
@@ -201,7 +329,7 @@ class AnimeAnnouncerAnimeTasks(commands.Cog):
                     print("Weekly reminder conditional entered.")
                     cursor.execute(
                         "SELECT user_id from tracked_anime WHERE anime_id = ? AND reminders_toggled = ?",
-                        (id, WEEKLY_REMINDERS_ENABLED),
+                        (id, 1),
                     )
                     row = cursor.fetchall()
                     uids = [user_ids[0] for user_ids in row]
@@ -215,7 +343,7 @@ class AnimeAnnouncerAnimeTasks(commands.Cog):
                 if new_val is not None and new_val != old_val:
                     cursor.execute(
                         f"UPDATE animes SET {db_column} = ? WHERE id = ?",
-                        (new_val, show["id"]),
+                        (new_val, anime["id"]),
                     )
                     print(f"{label} changed: {old_val} --> {new_val}.")
 
@@ -235,7 +363,28 @@ class AnimeAnnouncerAnimeTasks(commands.Cog):
             if found_change:
                 self.bot.connection.commit()
 
-        return found_change
+    async def _look_for_changes(
+        self,
+        anilist_data,
+        anime_ids: list[tuple[int, list[int]]],
+        manga_ids: list[tuple[int, list[int]]],
+    ) -> bool:
+        CHANNEL = self.bot.get_channel(self.channel_id)
+        if CHANNEL is None:
+            CHANNEL = await self.bot.fetch_channel(self.channel_id)
+        cursor = self.bot.connection.cursor()
+
+        manga_found_changes = self._manga_changes(
+            anilist_data, manga_ids, cursor, CHANNEL
+        )
+        anime_found_changes = self._anime_changes(
+            anilist_data, anime_ids, cursor, CHANNEL
+        )
+
+        if manga_found_changes == False or anime_found_changes == False:
+            return False
+        else:
+            return True
 
     @tasks.loop(hours=72)
     async def database_backup(self):
@@ -275,4 +424,4 @@ class AnimeAnnouncerAnimeTasks(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(AnimeAnnouncerTasks(bot))
+    await bot.add_cog(Tasks(bot))
