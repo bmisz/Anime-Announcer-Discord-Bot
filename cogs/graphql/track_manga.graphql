@@ -1,0 +1,17 @@
+query ($id: Int, $search: String) {
+	Media(id: $id, search: $search, type: MANGA) {
+		id
+		chapters
+		status
+		startDate {
+			year
+			month
+			day
+		}
+		title {
+			english
+			romaji
+		}
+		synonyms
+	}
+}

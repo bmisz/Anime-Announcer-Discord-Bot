@@ -39,7 +39,7 @@ class AnimeAnnouncerBot(commands.Bot):
             """
             CREATE TABLE IF NOT EXISTS mangas (
                 id INTEGER PRIMARY KEY,
-                title_englist TEXT,
+                title_english TEXT,
                 title_romaji TEXT,
                 chapters INTEGER,
                 start_date TEXT,

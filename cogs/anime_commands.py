@@ -13,7 +13,7 @@ from .util_methods import (
 from core import AnimeAnnouncerBot
 
 
-class AnimeAnnouncerCommands(commands.Cog):
+class Commands(commands.Cog):
     def __init__(self, bot: AnimeAnnouncerBot):
         self.bot = bot
         self.url = "https://graphql.anilist.co"
@@ -22,7 +22,7 @@ class AnimeAnnouncerCommands(commands.Cog):
     async def info(self, ctx: commands.Context, *anime_id):
         anime_id = ", ".join(anime_id)
         if anime_id == "":
-            await ctx.send("Please enter an ID you track to get info on it")
+            await ctx.send("Please enter an ID or anime name to get info on it")
             return
         query = load_query("info.graphql")
         try:
@@ -83,8 +83,8 @@ class AnimeAnnouncerCommands(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @commands.command(name="track")
-    async def track(self, ctx: commands.Context, *anime_id):
+    @commands.command(name="track_anime", aliases=["ta"])
+    async def track_anime(self, ctx: commands.Context, *anime_id):
         anime_id = ", ".join(anime_id)
         try:
             anime_id_int = int(anime_id)
@@ -97,7 +97,7 @@ class AnimeAnnouncerCommands(commands.Cog):
             return
 
         user_id = ctx.author.id
-        query = load_query("track.graphql")
+        query = load_query("track_anime.graphql")
 
         response = requests.post(
             self.url, json={"query": query, "variables": variables}
@@ -171,6 +171,88 @@ class AnimeAnnouncerCommands(commands.Cog):
 
         await ctx.send(f"Now tracking **{english_title} ({anime_id_int})**")
 
+    @commands.command(name="track_manga", aliases=["tm"])
+    async def track_manga(self, ctx: commands.Context, *manga_id):
+        manga_id = ", ".join(manga_id)
+        try:
+            manga_id_int = int(manga_id)
+        except ValueError:
+            variables = {"search": manga_id}
+        else:
+            variables = {"id": manga_id_int}
+        if manga_id == "":
+            await ctx.send("Please enter an ID or name to start tracking.")
+            return
+
+        user_id = ctx.author.id
+        query = load_query("track_manga.graphql")
+
+        response = requests.post(
+            self.url, json={"query": query, "variables": variables}
+        )
+        data = response.json()
+        error_response = check_response_for_errors(data)
+
+        if error_response != None:
+            await ctx.send(error_response)
+            return
+
+        manga = data["data"]["Media"]
+
+        if manga["status"] == "FINISHED":
+            await ctx.send(
+                "Show is finished and therefore has no reason to be tracked. Not added. "
+            )
+            return
+
+        start_date = f"{manga["startDate"]["year"]}-{manga["startDate"]["month"]}-{manga["startDate"]["day"]}"
+
+        cursor = self.bot.connection.cursor()
+
+        manga_id_int = manga["id"]
+        cursor.execute(
+            "SELECT 1 FROM tracked_manga WHERE user_id = ? AND manga_id = ?",
+            (user_id, manga_id_int),
+        )
+        if cursor.fetchone():
+            await ctx.send("You've already started tracking this manga.")
+            return
+
+        if manga["title"]["english"] is None:
+            english_title = determine_english_title(manga["synonyms"])
+            if english_title is None:
+                english_title = manga["title"]["romaji"]
+        else:
+            english_title = manga["title"]["english"]
+
+        cursor.execute(
+            """
+            INSERT OR IGNORE INTO mangas 
+            (id, title_english, title_romaji, chapters, start_date, status)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                manga["id"],
+                english_title,
+                manga["title"]["romaji"],
+                manga["chapters"],
+                start_date,
+                manga["status"],
+            ),
+        )
+        cursor.execute(
+            """
+            INSERT INTO tracked_manga
+            (manga_id, user_id, manga_nickname, reminders_toggled)
+            VALUES (?, ?, ?, ?)
+            """,
+            (manga_id_int, user_id, None, 0),
+        )
+
+        self.bot.connection.commit()
+
+        await ctx.send(f"Now tracking **{english_title} ({manga_id_int})**")
+
     @commands.command(name="untrack")
     async def untrack(self, ctx: commands.Context, *anime_id):
         anime_id = ", ".join(anime_id)
@@ -178,7 +260,7 @@ class AnimeAnnouncerCommands(commands.Cog):
             anime_id_int = int(anime_id)
         except ValueError:
             variables = {"search": anime_id}
-            query = load_query("untrack.graphql")
+            query = load_query("untrack_anime.graphql")
 
             response = requests.post(
                 self.url, json={"query": query, "variables": variables}
@@ -296,4 +378,4 @@ class AnimeAnnouncerCommands(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(AnimeAnnouncerCommands(bot))
+    await bot.add_cog(Commands(bot))

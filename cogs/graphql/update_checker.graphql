@@ -1,6 +1,6 @@
 query ($manga_ids: [Int], $anime_ids: [Int]) {
-    Page {
-        anime: media (id_in: $anime_ids, type: ANIME) {
+    anime: Page {
+        media (id_in: $anime_ids, type: ANIME) {
             id
             nextAiringEpisode { airingAt }
             status
@@ -14,8 +14,11 @@ query ($manga_ids: [Int], $anime_ids: [Int]) {
                 romaji
             }
         }
-        manga: media (id_in: $manga_ids, type: MANGA) {
+    }
+    manga: Page {
+        media (id_in: $manga_ids, type: MANGA) {
             id
+            idMal
             chapters
             status
             startDate {

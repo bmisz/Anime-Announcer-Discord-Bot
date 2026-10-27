@@ -21,7 +21,7 @@ class Tasks(commands.Cog):
         # self.week_reminder.start()
         self.database_backup.start()
 
-    def _get_anime_ids(self) -> list[int]:
+    def _get_anime_ids(self):
 
         cursor: sqlite3.Cursor = self.bot.connection.cursor()
 
@@ -34,16 +34,13 @@ class Tasks(commands.Cog):
 
         # returns: ids = [(showid0, [uid0, uid1...]), (showid1, [uid0, uid1...])]
         showids_and_uids = filter_ids(rows)
+        return showids_and_uids
 
-        anime_ids = [show[0] for show in showids_and_uids]
-
-        return anime_ids
-
-    def _get_manga_ids(self) -> list[int]:
+    def _get_manga_ids(self):
 
         cursor: sqlite3.Cursor = self.bot.connection.cursor()
 
-        cursor.execute("SELECT anime_id, user_id FROM tracked_anime")
+        cursor.execute("SELECT manga_id, user_id FROM tracked_manga")
         # rows = [(id, uid), (id2, uid2)...]
         rows: list[tuple[int, int]] = cursor.fetchall()
         if not rows:
@@ -52,12 +49,9 @@ class Tasks(commands.Cog):
 
         # returns: ids = [(showid0, [uid0, uid1...]), (showid1, [uid0, uid1...])]
         mangaids_and_uids = filter_ids(rows)
+        return mangaids_and_uids
 
-        manga_ids = [manga[0] for manga in mangaids_and_uids]
-
-        return manga_ids
-
-    @tasks.loop(minutes=25)
+    @tasks.loop(seconds=25)
     async def query_anilist(self):
         CHANNEL = self.bot.get_channel(self.channel_id)
         if CHANNEL is None:
@@ -65,11 +59,14 @@ class Tasks(commands.Cog):
 
         query = load_query("update_checker.graphql")
 
-        anime_ids = self._get_anime_ids()
-        manga_ids = self._get_manga_ids()
+        anime_ids_and_uids = self._get_anime_ids()
+        anime_ids_int = [aniid[0] for aniid in anime_ids_and_uids]
+        manga_ids_and_uids = self._get_manga_ids()
+        manga_ids_int = [aniid[0] for aniid in manga_ids_and_uids]
+
         variables = {
-            "anime_ids": anime_ids,
-            "manga_ids": manga_ids,
+            "manga_ids": manga_ids_int,
+            "anime_ids": anime_ids_int,
         }
         url = "https://graphql.anilist.co"
 
@@ -81,19 +78,44 @@ class Tasks(commands.Cog):
             return
         data = response.json()
 
-        changes = await self._look_for_changes(data, anime_ids, manga_ids)
+        changes = await self._look_for_changes(
+            data, anime_ids_and_uids, manga_ids_and_uids
+        )
 
         if changes == False:
-            print(f"Searched through {len(anime_ids)} shows and found no changes.")
+            print(
+                f"Searched through {len(anime_ids_int)} shows and {len(manga_ids_int)} mangas and found no changes."
+            )
 
-    async def _manga_changes(self, anilist_data, manga_ids, cursor, CHANNEL) -> bool:
-        for i, manga in enumerate(anilist_data["data"]["Page"]["manga"]):
+    def get_live_manga_chapters(mal_id):
+        try:
+            url = f"https://api.jikan.moe/v4/manga/{mal_id}"
+            response = requests.get(url)
+
+            # Rate limit
+            time.sleep(0.34)
+
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("data", {}).get("chapters")
+        except Exception as e:
+            print(f"Error fetching live chapters for MAL ID {mal_id}: {e}")
+        return None
+
+    async def _manga_changes(
+        self, anilist_data, manga_ids: list[tuple[int, list[int]]], cursor, CHANNEL
+    ) -> bool:
+        found_change = False
+        for i, manga in enumerate(anilist_data["data"]["manga"]["media"]):
             id = manga["id"]
             users_who_track = manga_ids[i][1]
             anilist_english_title = manga["title"]["english"]
             anilist_status = manga["status"]
             startDate = manga["startDate"]
-            anilist_chapters = manga["chapters"] if manga["chapters"] else None
+            anilist_chapters = manga["chapters"]
+            if anilist_status == "RELEASING" and manga["idMal"]:
+                anilist_chapters = self.get_live_manga_chapters()
+            print(anilist_chapters)
             anilist_startDate = (
                 f"{startDate['year']}-{startDate['month']}-{startDate['day']}"
             )
@@ -182,7 +204,7 @@ class Tasks(commands.Cog):
                     # This is an exception for weekly reminders
                     cursor.execute(
                         "UPDATE mangas SET chapters = ? WHERE id = ?",
-                        (new_val, manga["id"]),
+                        (new_val, id),
                     )
                     self.bot.connection.commit()
                     print(f"{label} changed: {old_val} --> {new_val}.")
@@ -223,8 +245,11 @@ class Tasks(commands.Cog):
 
         return found_change
 
-    async def _anime_changes(self, anilist_data, anime_ids, cursor, CHANNEL) -> bool:
-        for i, anime in enumerate(anilist_data["data"]["Page"]["anime"]):
+    async def _anime_changes(
+        self, anilist_data, anime_ids: list[tuple[int, list[int]]], cursor, CHANNEL
+    ) -> bool:
+        found_change = False
+        for i, anime in enumerate(anilist_data["data"]["anime"]["media"]):
             id = anime["id"]
             users_who_track = anime_ids[i][1]
             anilist_english_title = anime["title"]["english"]
@@ -374,10 +399,10 @@ class Tasks(commands.Cog):
             CHANNEL = await self.bot.fetch_channel(self.channel_id)
         cursor = self.bot.connection.cursor()
 
-        manga_found_changes = self._manga_changes(
+        manga_found_changes = await self._manga_changes(
             anilist_data, manga_ids, cursor, CHANNEL
         )
-        anime_found_changes = self._anime_changes(
+        anime_found_changes = await self._anime_changes(
             anilist_data, anime_ids, cursor, CHANNEL
         )
 
