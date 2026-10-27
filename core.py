@@ -37,6 +37,22 @@ class AnimeAnnouncerBot(commands.Bot):
             #     name TEXT
             # }
             """
+            CREATE TABLE IF NOT EXISTS mangas (
+                id INTEGER PRIMARY KEY,
+                title_englist TEXT,
+                title_romaji TEXT,
+                chapters INTEGER,
+                start_date TEXT,
+                status TEXT
+            );
+            CREATE TABLE IF NOT EXISTS tracked_manga (
+                manga_id INTEGER,
+                user_id INTEGER,
+                manga_nickname TEXT,
+                reminders_toggled INTEGER DEFAULT 0 CHECK (reminders_toggled IN (0, 1)),
+                PRIMARY KEY (user_id, manga_id),
+                FOREIGN KEY (manga_id) REFERENCES mangas(id)
+            );
             CREATE TABLE IF NOT EXISTS animes (
                 id INTEGER PRIMARY KEY,
                 title_english TEXT,
@@ -49,7 +65,7 @@ class AnimeAnnouncerBot(commands.Bot):
                 anime_id INTEGER,
                 user_id INTEGER,
                 anime_nickname TEXT,
-                weekly_reminders_toggled INTEGER DEFAULT 0 CHECK (weekly_reminders_toggled IN (0, 1)),
+                reminders_toggled INTEGER DEFAULT 0 CHECK (reminders_toggled IN (0, 1)),
                 PRIMARY KEY (user_id, anime_id),
                 FOREIGN KEY (anime_id) REFERENCES animes(id)
             );

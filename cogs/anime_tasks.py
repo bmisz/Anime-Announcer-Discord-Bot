@@ -11,7 +11,7 @@ from .util_methods import format_time, filter_ids, get_mention_string, load_quer
 load_dotenv()
 
 
-class AnimeAnnouncerTasks(commands.Cog):
+class AnimeAnnouncerAnimeTasks(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.channel_id = os.getenv("ANNOUNCEMENT_CHANNEL_ID")
@@ -21,11 +21,7 @@ class AnimeAnnouncerTasks(commands.Cog):
         # self.week_reminder.start()
         self.database_backup.start()
 
-    @tasks.loop(minutes=25)
-    async def query_anilist(self):
-        CHANNEL = self.bot.get_channel(self.channel_id)
-        if CHANNEL is None:
-            CHANNEL = await self.bot.fetch_channel(self.channel_id)
+    def _get_anime_ids(self):
 
         cursor: sqlite3.Cursor = self.bot.connection.cursor()
 
@@ -33,17 +29,46 @@ class AnimeAnnouncerTasks(commands.Cog):
         # rows = [(id, uid), (id2, uid2)...]
         rows: list[tuple[int, int]] = cursor.fetchall()
         if not rows:
-            print("Not tracking any anime yet, skipping any checking.")
-            return
+            print("Not tracking any anime yet, returning empty list")
+            return []
 
         # returns: ids = [(showid0, [uid0, uid1...]), (showid1, [uid0, uid1...])]
-        ids = filter_ids(rows)
+        showids_and_uids = filter_ids(rows)
 
-        show_ids = [show[0] for show in ids]
+        anime_ids = [show[0] for show in showids_and_uids]
+
+        return anime_ids
+
+    def _get_manga_ids(self):
+
+        cursor: sqlite3.Cursor = self.bot.connection.cursor()
+
+        cursor.execute("SELECT anime_id, user_id FROM tracked_anime")
+        # rows = [(id, uid), (id2, uid2)...]
+        rows: list[tuple[int, int]] = cursor.fetchall()
+        if not rows:
+            print("Not tracking any manga yet, returning empty list")
+            return []
+
+        # returns: ids = [(showid0, [uid0, uid1...]), (showid1, [uid0, uid1...])]
+        mangaids_and_uids = filter_ids(rows)
+
+        manga_ids = [manga[0] for manga in mangaids_and_uids]
+
+        return manga_ids
+
+    @tasks.loop(minutes=25)
+    async def query_anilist(self):
+        CHANNEL = self.bot.get_channel(self.channel_id)
+        if CHANNEL is None:
+            CHANNEL = await self.bot.fetch_channel(self.channel_id)
 
         query = load_query("update_checker.graphql")
 
-        variables = {"ids": show_ids}
+        variables = {
+            "anime_ids": self._get_anime_ids(),
+            "manga_ids": self._get_manga_ids(),
+        }
         url = "https://graphql.anilist.co"
 
         try:
@@ -71,7 +96,7 @@ class AnimeAnnouncerTasks(commands.Cog):
 
         found_change = False
 
-        for i, show in enumerate(anilist_data["data"]["Page"]["media"]):
+        for i, show in enumerate(anilist_data["data"]["Page"]["anime"]):
             id = show["id"]
             users_who_track = ids[i][1]
             anilist_english_title = show["title"]["english"]
@@ -175,7 +200,7 @@ class AnimeAnnouncerTasks(commands.Cog):
 
                     print("Weekly reminder conditional entered.")
                     cursor.execute(
-                        "SELECT user_id from tracked_anime WHERE anime_id = ? AND weekly_reminders_toggled = ?",
+                        "SELECT user_id from tracked_anime WHERE anime_id = ? AND reminders_toggled = ?",
                         (id, WEEKLY_REMINDERS_ENABLED),
                     )
                     row = cursor.fetchall()

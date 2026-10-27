@@ -161,7 +161,7 @@ class AnimeAnnouncerCommands(commands.Cog):
         cursor.execute(
             """
             INSERT INTO tracked_anime
-            (anime_id, user_id, anime_nickname, weekly_reminders_toggled)
+            (anime_id, user_id, anime_nickname, reminders_toggled)
             VALUES (?, ?, ?, ?)
             """,
             (anime_id_int, user_id, None, 0),
@@ -269,7 +269,7 @@ class AnimeAnnouncerCommands(commands.Cog):
 
         cursor = self.bot.connection.cursor()
         cursor.execute(
-            "SELECT weekly_reminders_toggled FROM tracked_anime WHERE user_id = ? AND anime_id = ?",
+            "SELECT reminders_toggled FROM tracked_anime WHERE user_id = ? AND anime_id = ?",
             (user_id, anime_id_int),
         )
         result = cursor.fetchone()
@@ -278,17 +278,17 @@ class AnimeAnnouncerCommands(commands.Cog):
                 f'You may not be tracking this anime. Try "!track {anime_id_int}", then try again.'
             )
         if result:
-            weekly_reminders_toggled = result[0]
+            reminders_toggled = result[0]
 
-        if weekly_reminders_toggled == 0:
+        if reminders_toggled == 0:
             cursor.execute(
-                "UPDATE tracked_anime SET weekly_reminders_toggled = ? WHERE user_id = ? AND anime_id = ?",
+                "UPDATE tracked_anime SET reminders_toggled = ? WHERE user_id = ? AND anime_id = ?",
                 (1, user_id, anime_id_int),
             )
             await ctx.send(f"Turned on weekly updates for anime id {anime_id_int}")
         else:
             cursor.execute(
-                "UPDATE tracked_anime SET weekly_reminders_toggled = ? WHERE user_id = ? AND anime_id = ?",
+                "UPDATE tracked_anime SET reminders_toggled = ? WHERE user_id = ? AND anime_id = ?",
                 (0, user_id, anime_id_int),
             )
             await ctx.send(f"Turned off weekly updates for anime id {anime_id_int}")

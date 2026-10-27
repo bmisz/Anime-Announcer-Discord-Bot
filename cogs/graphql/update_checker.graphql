@@ -1,18 +1,32 @@
-query ($ids: [Int]) {
-            Page {
-                media (id_in: $ids, type: ANIME) {
-                    id
-                    nextAiringEpisode { airingAt }
-                    status
-                    startDate {
-                        year
-                        month
-                        day
-                    }
-                    title {
-                        english
-                        romaji
-                    }
-                }
+query ($manga_ids: [Int], $anime_ids: [Int]) {
+    Page {
+        anime: media (id_in: $anime_ids, type: ANIME) {
+            id
+            nextAiringEpisode { airingAt }
+            status
+            startDate {
+                year
+                month
+                day
+            }
+            title {
+                english
+                romaji
             }
         }
+        manga: media (id_in: $manga_ids, type: MANGA) {
+            id
+            chapters
+            status
+            startDate {
+                year
+                month
+                day
+            }
+            title {
+                english
+                romaji
+            }
+        }
+    }
+}
