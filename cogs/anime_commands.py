@@ -18,7 +18,7 @@ class AnimeAnnouncerCommands(commands.Cog):
         self.bot = bot
         self.url = "https://graphql.anilist.co"
 
-    @commands.command(name="info")
+    @commands.command(name="info", aliases=["i"])
     async def info(self, ctx: commands.Context, *anime_id):
         anime_id = ", ".join(anime_id)
         if anime_id == "":
@@ -83,7 +83,7 @@ class AnimeAnnouncerCommands(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @commands.command(name="track")
+    @commands.command(name="track", aliases=["t"])
     async def track(self, ctx: commands.Context, *anime_id):
         anime_id = ", ".join(anime_id)
         try:
@@ -171,7 +171,7 @@ class AnimeAnnouncerCommands(commands.Cog):
 
         await ctx.send(f"Now tracking **{english_title} ({anime_id_int})**")
 
-    @commands.command(name="untrack")
+    @commands.command(name="untrack", aliases=["u"])
     async def untrack(self, ctx: commands.Context, *anime_id):
         anime_id = ", ".join(anime_id)
         try:
@@ -202,7 +202,9 @@ class AnimeAnnouncerCommands(commands.Cog):
         )
         row = cursor.fetchone()
         if row is None:
-            await ctx.send("You were not tracking this anime (If you are, try specifying the season).")
+            await ctx.send(
+                "You were not tracking this anime (If you are, try specifying the season)."
+            )
         name = row[0]
 
         cursor.execute(
@@ -220,7 +222,7 @@ class AnimeAnnouncerCommands(commands.Cog):
             self.bot.connection.commit()
         await ctx.send(f"Stopped tracking **{name} ({anime_id_int})**")
 
-    @commands.command(name="list")
+    @commands.command(name="list", aliases=["l"])
     async def list(self, ctx: commands.Context):
         user_id = ctx.author.id
         cursor = self.bot.connection.cursor()
@@ -243,7 +245,7 @@ class AnimeAnnouncerCommands(commands.Cog):
 
         await ctx.send(final_string)
 
-    @commands.command()
+    @commands.command(name="toggle_reminder", aliases=["tr"])
     async def toggle_reminders(self, ctx: commands.Context, *anime_id):
         anime_id = ", ".join(anime_id)
         try:
@@ -274,7 +276,7 @@ class AnimeAnnouncerCommands(commands.Cog):
         )
         result = cursor.fetchone()
         if result is None:
-             await ctx.send(
+            await ctx.send(
                 f'You may not be tracking this anime. Try "!track {anime_id_int}", then try again.'
             )
         if result:
