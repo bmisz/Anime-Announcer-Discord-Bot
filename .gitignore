@@ -7,3 +7,5 @@ __pycache__/
 .venv/
 .vscode/
 docker-compose.local.yml
+.envrc
+.direnv/
